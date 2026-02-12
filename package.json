@@ -20,19 +20,12 @@
 	"main": "index.js",
 	"scripts": {
 		"preinstall": "npx only-allow pnpm",
-		"build": "tsc && gulp build:icons && gulp build:credential-icons && docker restart n8n",
+		"build": "tsc && gulp build:icons && gulp build:credential-icons",
 		"dev": "tsc --watch",
 		"format": "prettier nodes credentials --write",
 		"lint": "eslint nodes credentials package.json",
 		"lintfix": "eslint nodes credentials package.json --fix",
-		"prepublishOnly": "pnpm build && pnpm lint -c .eslintrc.prepublish.js nodes credentials package.json",
-		"docker:build": "docker-compose build",
-		"docker:up": "docker-compose up -d",
-		"docker:down": "docker-compose down",
-		"docker:logs": "docker-compose logs -f",
-		"docker:restart": "docker-compose restart",
-		"docker:dev": "pnpm build && docker-compose -f docker-compose.dev.yml up",
-		"docker:dev:restart": "pnpm build && docker-compose -f docker-compose.dev.yml restart"
+		"prepublishOnly": "pnpm build && pnpm lint -c .eslintrc.prepublish.js nodes credentials package.json"
 	},
 	"files": [
 		"dist"
