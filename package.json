@@ -1,0 +1,63 @@
+{
+	"name": "n8n-nodes-oneai",
+	"version": "0.1.0",
+	"description": "A n8n community node for interacting with the OneAI API.",
+	"license": "MIT",
+	"homepage": "https://oneai.eu",
+	"author": {
+		"name": "OneAI",
+		"email": "dev@oneai.eu"
+	},
+	"repository": {
+		"type": "git",
+		"url": ""
+	},
+	"engines": {
+		"node": ">=18.10",
+		"pnpm": ">=9.1"
+	},
+	"packageManager": "pnpm@9.1.4",
+	"main": "index.js",
+	"scripts": {
+		"preinstall": "npx only-allow pnpm",
+		"build": "tsc && gulp build:icons && gulp build:credential-icons && docker restart n8n",
+		"dev": "tsc --watch",
+		"format": "prettier nodes credentials --write",
+		"lint": "eslint nodes credentials package.json",
+		"lintfix": "eslint nodes credentials package.json --fix",
+		"prepublishOnly": "pnpm build && pnpm lint -c .eslintrc.prepublish.js nodes credentials package.json",
+		"docker:build": "docker-compose build",
+		"docker:up": "docker-compose up -d",
+		"docker:down": "docker-compose down",
+		"docker:logs": "docker-compose logs -f",
+		"docker:restart": "docker-compose restart",
+		"docker:dev": "pnpm build && docker-compose -f docker-compose.dev.yml up",
+		"docker:dev:restart": "pnpm build && docker-compose -f docker-compose.dev.yml restart"
+	},
+	"files": [
+		"dist"
+	],
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"credentials": [
+			"dist/credentials/OneAiApi.credentials.js"
+		],
+		"nodes": [
+			"dist/nodes/OneAi/OneAi.node.js"
+		]
+	},
+	"dependencies": {
+		"n8n-workflow": "^1.120.3"
+	},
+	"devDependencies": {
+		"@typescript-eslint/parser": "^7.15.0",
+		"eslint": "^8.56.0",
+		"eslint-plugin-n8n-nodes-base": "^1.16.1",
+		"gulp": "^4.0.2",
+		"prettier": "^3.3.2",
+		"typescript": "^5.5.3"
+	},
+	"peerDependencies": {
+		"n8n-workflow": "*"
+	}
+}

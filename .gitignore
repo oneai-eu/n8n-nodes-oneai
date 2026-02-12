@@ -1,0 +1,7 @@
+/.Dockerfile.swp
+/.pnpm-store
+/node_modules
+/package-lock.json
+/pnpm-lock.yaml
+/dist
+/_docs

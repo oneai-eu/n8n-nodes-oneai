@@ -1,0 +1,16 @@
+{
+	"name": "Node.js & TypeScript",
+	"build": {
+	  "dockerfile": "Dockerfile"
+	},
+	"postCreateCommand": "pnpm install && pnpm run build",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"yoavbls.pretty-ts-errors",
+				"TypeScriptTeam.native-preview"
+			]
+		}
+	},
+	"runArgs": ["--privileged"]
+}
