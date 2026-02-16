@@ -25,6 +25,14 @@ export const description: INodeProperties[] = [
 		description: 'Storage provider for the space',
 		options: [
 			{
+				name: 'GitHub',
+				value: 'github',
+			},
+			{
+				name: 'Google Drive',
+				value: 'google',
+			},
+			{
 				name: 'Local',
 				value: 'local',
 			},
@@ -35,14 +43,6 @@ export const description: INodeProperties[] = [
 			{
 				name: 'SharePoint',
 				value: 'sharepoint',
-			},
-			{
-				name: 'Google Drive',
-				value: 'google',
-			},
-			{
-				name: 'GitHub',
-				value: 'github',
 			},
 		],
 		displayOptions: {
@@ -73,6 +73,13 @@ export const description: INodeProperties[] = [
 				description: 'Authorization code for cloud storage linking',
 			},
 			{
+				displayName: 'Branch',
+				name: 'branch',
+				type: 'string',
+				default: '',
+				description: 'Branch name for GitHub',
+			},
+			{
 				displayName: 'Drive ID',
 				name: 'driveId',
 				type: 'string',
@@ -92,13 +99,6 @@ export const description: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Repository name for GitHub',
-			},
-			{
-				displayName: 'Branch',
-				name: 'branch',
-				type: 'string',
-				default: '',
-				description: 'Branch name for GitHub',
 			},
 		],
 	},

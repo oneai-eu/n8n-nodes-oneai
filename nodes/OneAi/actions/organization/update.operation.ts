@@ -46,7 +46,7 @@ export const description: INodeProperties[] = [
 			{
 				displayName: 'Theme Color',
 				name: 'themeColor',
-				type: 'string',
+				type: 'color',
 				default: '',
 				description: 'Theme color for the organization',
 			},

@@ -6,6 +6,7 @@ export const description: INodeProperties[] = [
 		displayName: 'API Key ID',
 		name: 'apiKeyId',
 		type: 'string',
+		typeOptions: { password: true },
 		required: true,
 		default: '',
 		description: 'The ID of the API key to delete',

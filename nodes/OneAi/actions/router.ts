@@ -6,7 +6,6 @@ import * as artifact from './artifact';
 // import * as auditLog from './auditLog';
 import * as chat from './chat';
 // import * as complianceLlm from './complianceLlm';
-// import * as compliancePattern from './compliancePattern';
 // import * as member from './member';
 import * as openai from './openai';
 // import * as organization from './organization';
@@ -136,32 +135,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				// 			break;
 				// 		case 'updateSettings':
 				// 			responseData = await complianceLlm.updateSettings.execute.call(this, i);
-				// 			break;
-				// 		default:
-				// 			throw new NodeOperationError(
-				// 				this.getNode(),
-				// 				`Unknown operation: ${operation}`,
-				// 				{ itemIndex: i },
-				// 			);
-				// 	}
-				// 	break;
-
-				// case 'compliancePattern':
-				// 	switch (operation) {
-				// 		case 'create':
-				// 			responseData = await compliancePattern.create.execute.call(this, i);
-				// 			break;
-				// 		case 'delete':
-				// 			responseData = await compliancePattern.delete.execute.call(this, i);
-				// 			break;
-				// 		case 'edit':
-				// 			responseData = await compliancePattern.edit.execute.call(this, i);
-				// 			break;
-				// 		case 'list':
-				// 			responseData = await compliancePattern.list.execute.call(this, i);
-				// 			break;
-				// 		case 'toggleEnabled':
-				// 			responseData = await compliancePattern.toggleEnabled.execute.call(this, i);
 				// 			break;
 				// 		default:
 				// 			throw new NodeOperationError(

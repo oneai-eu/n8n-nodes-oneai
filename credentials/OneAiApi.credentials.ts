@@ -12,7 +12,7 @@ export class OneAiApi implements ICredentialType {
 
 	icon = 'file:oneai.svg' as const;
 
-	documentationUrl = 'https://'; // change later! change this and change in oneai.node.ts
+	documentationUrl = 'https://oneai.eu/docs';
 
 	properties: INodeProperties[] = [
 		{

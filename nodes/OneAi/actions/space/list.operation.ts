@@ -64,6 +64,14 @@ export const description: INodeProperties[] = [
 						value: '',
 					},
 					{
+						name: 'GitHub',
+						value: 'github',
+					},
+					{
+						name: 'Google Drive',
+						value: 'google',
+					},
+					{
 						name: 'Local',
 						value: 'local',
 					},
@@ -74,14 +82,6 @@ export const description: INodeProperties[] = [
 					{
 						name: 'SharePoint',
 						value: 'sharepoint',
-					},
-					{
-						name: 'Google Drive',
-						value: 'google',
-					},
-					{
-						name: 'GitHub',
-						value: 'github',
 					},
 				],
 			},

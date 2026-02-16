@@ -171,9 +171,9 @@ export async function oneAiApiRequestAllItems(
 	let page = 0;
 	const pageSize = 100;
 
-	let responseData: JsonObject;
-	do {
-		responseData = await oneAiApiRequest.call(this, {
+	let hasMore = true;
+	while (hasMore) {
+		const responseData = await oneAiApiRequest.call(this, {
 			...options,
 			qs: {
 				...options.qs,
@@ -197,9 +197,9 @@ export async function oneAiApiRequestAllItems(
 		const totalCount = pagination?.totalCount as number;
 
 		if (hasNextPage === false || (totalCount !== undefined && returnData.length >= totalCount)) {
-			break;
+			hasMore = false;
 		}
-	} while (true);
+	}
 
 	return returnData;
 }

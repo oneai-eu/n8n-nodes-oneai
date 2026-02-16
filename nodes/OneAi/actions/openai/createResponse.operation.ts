@@ -20,91 +20,81 @@ export const description: INodeProperties[] = [
 				operation: ['createResponse'],
 			},
 		},
-		// descriptions are taken from the /models endpoint, available on oneai
 		options: [
 			{
-				name: 'GPT-5 Nano',
-				value: 'gpt-5-nano',
-				description:
-					'Fastest, cheapest version of GPT-5, great for summarization and classification. Created by OpenAI.',
-			},
-			{
-				name: 'GPT-5 Mini',
-				value: 'gpt-5-mini',
-				description:
-					'Faster, more cost-efficient version of GPT-5, great for well-defined tasks and precise prompts. Created by OpenAI.',
-			},
-			{
-				name: 'GPT-5.1',
-				value: 'gpt-5.1',
-				description:
-					'Previous flagship model for coding, reasoning, and agentic tasks. Created by OpenAI.',
-			},
-			{
-				name: 'GPT-5.2',
-				value: 'gpt-5.2',
-				description:
-					'Flagship model for coding, reasoning, and agentic tasks. Created by OpenAI.',
-			},
-			{
-				name: 'Sonnet 4.5',
-				value: 'claude-sonnet-4-5',
-				description: "Anthropic's smartest model for complex agents and coding.",
-			},
-			{
-				name: 'Haiku 4.5',
-				value: 'claude-haiku-4-5',
-				description: "Anthropic's fastest model with near-frontier intelligence.",
-			},
-			{
-				name: 'Opus 4.5',
-				value: 'claude-opus-4-5',
-				description:
-					"Anthropic's premium model combining maximum intelligence with practical performance.",
-			},
-			{
-				name: 'Mistral Small',
-				value: 'mistral-small-latest',
-				description:
-					"Mistral's small model, suitable for basic tasks and lightweight applications.",
-			},
-			{
-				name: 'Mistral Medium',
-				value: 'mistral-medium-latest',
-				description: "Mistral's frontier-class model for general-purpose use cases.",
-			},
-			{
-				name: 'Mistral Large',
-				value: 'mistral-large-latest',
-				description: "Mistral's large model for complex tasks and applications.",
-			},
-			{
-				name: 'Magistral Small',
-				value: 'magistral-small-latest',
-				description:
-					"Mistral's small reasoning model, suitable for tasks requiring basic reasoning.",
-			},
-			{
-				name: 'Magistral Medium',
-				value: 'magistral-medium-latest',
-				description: "Mistral's frontier-class reasoning model.",
+				name: 'Gemini 2.5 Flash',
+				value: 'gemini-2.5-flash',
+				description: 'Google\'s best model in terms of performance, offering well-rounded capabilities',
 			},
 			{
 				name: 'Gemini 2.5 Flash Lite',
 				value: 'gemini-2.5-flash-lite',
-				description:
-					"Google's most cost-effective model that supports high throughput tasks.",
-			},
-			{
-				name: 'Gemini 2.5 Flash',
-				value: 'gemini-2.5-flash',
-				description:
-					"Google's best model in terms of performance, offering well-rounded capabilities.",
+				description: 'Google\'s most cost-effective model that supports high throughput tasks',
 			},
 			{
 				name: 'Gemini 3 Pro',
 				value: 'gemini-3-pro-preview',
-				description: "Google's most powerful agentic and vibe-coding model yet.",
+				description: 'Google\'s most powerful agentic and vibe-coding model yet',
+			},
+			{
+				name: 'GPT-5 Mini',
+				value: 'gpt-5-mini',
+				description: 'Faster, more cost-efficient version of GPT-5, great for well-defined tasks and precise prompts. Created by OpenAI.',
+			},
+			{
+				name: 'GPT-5 Nano',
+				value: 'gpt-5-nano',
+				description: 'Fastest, cheapest version of GPT-5, great for summarization and classification. Created by OpenAI.',
+			},
+			{
+				name: 'GPT-5.1',
+				value: 'gpt-5.1',
+				description: 'Previous flagship model for coding, reasoning, and agentic tasks. Created by OpenAI.',
+			},
+			{
+				name: 'GPT-5.2',
+				value: 'gpt-5.2',
+				description: 'Flagship model for coding, reasoning, and agentic tasks. Created by OpenAI.',
+			},
+			{
+				name: 'Haiku 4.5',
+				value: 'claude-haiku-4-5',
+				description: 'Anthropic\'s fastest model with near-frontier intelligence',
+			},
+			{
+				name: 'Magistral Medium',
+				value: 'magistral-medium-latest',
+				description: 'Mistral\'s frontier-class reasoning model',
+			},
+			{
+				name: 'Magistral Small',
+				value: 'magistral-small-latest',
+				description: 'Mistral\'s small reasoning model, suitable for tasks requiring basic reasoning',
+			},
+			{
+				name: 'Mistral Large',
+				value: 'mistral-large-latest',
+				description: 'Mistral\'s large model for complex tasks and applications',
+			},
+			{
+				name: 'Mistral Medium',
+				value: 'mistral-medium-latest',
+				description: 'Mistral\'s frontier-class model for general-purpose use cases',
+			},
+			{
+				name: 'Mistral Small',
+				value: 'mistral-small-latest',
+				description: 'Mistral\'s small model, suitable for basic tasks and lightweight applications',
+			},
+			{
+				name: 'Opus 4.5',
+				value: 'claude-opus-4-5',
+				description: 'Anthropic\'s premium model combining maximum intelligence with practical performance',
+			},
+			{
+				name: 'Sonnet 4.5',
+				value: 'claude-sonnet-4-5',
+				description: 'Anthropic\'s smartest model for complex agents and coding',
 			},
 		],
 	},

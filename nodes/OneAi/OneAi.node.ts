@@ -10,7 +10,6 @@ import * as artifact from './actions/artifact';
 // import * as auditLog from './actions/auditLog';
 import * as chat from './actions/chat';
 // import * as complianceLlm from './actions/complianceLlm';
-// import * as compliancePattern from './actions/compliancePattern';
 // import * as member from './actions/member';
 import * as openai from './actions/openai';
 // import * as organization from './actions/organization';
@@ -69,10 +68,6 @@ export class OneAi implements INodeType {
 					// 	value: 'complianceLlm',
 					// },
 					// {
-					// 	name: 'Compliance Pattern',
-					// 	value: 'compliancePattern',
-					// },
-					// {
 					// 	name: 'Member',
 					// 	value: 'member',
 					// },
@@ -112,7 +107,6 @@ export class OneAi implements INodeType {
 			// ...auditLog.description,
 			...chat.description,
 			// ...complianceLlm.description,
-			// ...compliancePattern.description,
 			// ...member.description,
 			...openai.description,
 			// ...organization.description,
@@ -122,6 +116,7 @@ export class OneAi implements INodeType {
 			// ...stats.description,
 			// ...team.description,
 		],
+		usableAsTool: true,
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
