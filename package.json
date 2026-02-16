@@ -19,7 +19,7 @@
 		"dev": "n8n-node dev",
 		"lint": "n8n-node lint",
 		"lint:fix": "n8n-node lint --fix",
-		"prepublishOnly": "n8n-node prerelease"
+		"prepublishOnly": "npm run build && npm run lint"
 	},
 	"files": ["dist"],
 	"n8n": {
