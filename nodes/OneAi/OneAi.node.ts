@@ -25,7 +25,7 @@ export class OneAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'OneAI',
 		name: 'oneAi',
-		icon: 'file:oneai-icon-white.svg',
+		icon: 'file:oneai.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
