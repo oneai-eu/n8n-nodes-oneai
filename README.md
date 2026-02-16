@@ -15,7 +15,7 @@ A community node for [n8n](https://n8n.io/) that integrates with the [OneAI](htt
 
 ```bash
 # Clone the repository
-git clone <repo-url>
+git clone https://github.com/oneai-eu/n8n-nodes-oneai
 cd n8n-nodes-oneai
 
 # Install dependencies
