@@ -1,6 +1,6 @@
 {
 	"name": "@oneai-eu/n8n-nodes-oneai",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "A n8n community node for interacting with the OneAI API.",
 	"keywords": ["n8n-community-node-package", "oneai", "oneai.eu", "eu ai act"],
 	"license": "MIT",
