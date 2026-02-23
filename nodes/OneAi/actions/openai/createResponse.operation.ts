@@ -4,7 +4,9 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { oneAiApiRequestStream } from '../../transport';
+import { NodeOperationError } from 'n8n-workflow';
+
+import { oneAiApiRequestStream, oneAiApiRequestWebSocket } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
@@ -253,6 +255,77 @@ export const description: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Associate with Chat',
+		name: 'associateChat',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether to send the message through a OneAI chat instead of the OpenAI create response endpoint directly. This allows resuming a chat or simply have a context for requests. This requires a reasoning effort.',
+		displayOptions: {
+			show: {
+				resource: ['openai'],
+				operation: ['createResponse'],
+			},
+		},
+	},
+	{
+		displayName: 'Chat ID',
+		name: 'chatId',
+		type: 'string',
+		required: true,
+		default: '',
+		description:
+			'The ID of the chat to send the message in. Create a chat first using the Chat > Create operation.',
+		displayOptions: {
+			show: {
+				resource: ['openai'],
+				operation: ['createResponse'],
+				associateChat: [true],
+			},
+		},
+	},
+	{
+		displayName: 'Chat Options',
+		name: 'chatOptions',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['openai'],
+				operation: ['createResponse'],
+				associateChat: [true],
+			},
+		},
+		options: [
+			{
+				displayName: 'Time Zone',
+				name: 'timeZone',
+				type: 'string',
+				default: '',
+				placeholder: 'Europe/Berlin',
+				description:
+					'Your timezone for timestamp formatting (e.g. "Europe/Berlin"). Defaults to the server timezone if left empty.',
+			},
+			{
+				displayName: 'Branch ID',
+				name: 'branchId',
+				type: 'string',
+				default: '',
+				description:
+					"Send on a specific branch. Defaults to the chat's current branch if left empty.",
+			},
+			{
+				displayName: 'Regenerate Message ID',
+				name: 'regenerate',
+				type: 'string',
+				default: '',
+				description:
+					'Message ID of an assistant message to regenerate. Creates a new branch.',
+			},
+		],
+	},
 ];
 
 export async function execute(
@@ -261,13 +334,9 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const model = this.getNodeParameter('model', index) as string;
 	const inputMode = this.getNodeParameter('inputMode', index) as string;
-	const additionalOptions = this.getNodeParameter('additionalOptions', index) as {
-		temperature?: number;
-		reasoningEffort?: string;
-		reasoningSummary?: string;
-		tools?: string;
-	};
+	const associateChat = this.getNodeParameter('associateChat', index, false) as boolean;
 
+	// Build input messages
 	let input: IDataObject[];
 	if (inputMode === 'messages') {
 		const messagesData = this.getNodeParameter('messages', index) as {
@@ -283,6 +352,53 @@ export async function execute(
 		const messagesJson = this.getNodeParameter('messagesJson', index) as string;
 		input = JSON.parse(messagesJson) as IDataObject[];
 	}
+
+	// if associate chat, then apply the chatoptions.
+	if (associateChat) {
+		const chatId = this.getNodeParameter('chatId', index) as string;
+		const chatOptions = this.getNodeParameter('chatOptions', index, {}) as {
+			timeZone?: string;
+			branchId?: string;
+			regenerate?: string;
+		};
+		const additionalOptions = this.getNodeParameter('additionalOptions', index) as {
+			reasoningEffort?: string;
+		};
+
+		const userMessages = input.filter((m) => m.role === 'user');
+		if (userMessages.length === 0) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'At least one user message is required when using chat association.',
+			);
+		}
+		const content = userMessages.map((m) => m.content as string).join('\n\n');
+
+		const response = await oneAiApiRequestWebSocket.call(this, {
+			chatId,
+			model,
+			content,
+			reasoningEffort: additionalOptions.reasoningEffort || undefined,
+			timeZone: chatOptions.timeZone || undefined,
+			branchId: chatOptions.branchId || undefined,
+			regenerate: chatOptions.regenerate || undefined,
+		});
+
+		return [
+			{
+				json: response as IDataObject,
+				pairedItem: { item: index },
+			},
+		];
+	}
+
+	// SSE arguments
+	const additionalOptions = this.getNodeParameter('additionalOptions', index) as {
+		temperature?: number;
+		reasoningEffort?: string;
+		reasoningSummary?: string;
+		tools?: string;
+	};
 
 	const body: IDataObject = {
 		model,

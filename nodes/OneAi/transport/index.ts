@@ -159,6 +159,192 @@ function parseSseResponse(ctx: IExecuteFunctions, sseText: string): JsonObject {
 	);
 }
 
+export interface OneAiWebSocketOptions {
+	chatId: string;
+	model: string;
+	content: string;
+	reasoningEffort?: string;
+	timeZone?: string;
+	branchId?: string;
+	regenerate?: string;
+}
+
+// This connects to the websocket /api/chats/:chatId/send endpoint, sends the user message,
+// aggregates all deltas and then returns a single result
+export async function oneAiApiRequestWebSocket(
+	this: IExecuteFunctions,
+	options: OneAiWebSocketOptions,
+): Promise<JsonObject> {
+	const credentials = await this.getCredentials('oneAiApi');
+	const baseUrl = (credentials.url as string).replace(/\/$/, '');
+	const apiKey = credentials.apiKey as string;
+
+	const wsBase = baseUrl.replace(/^http/, 'ws');
+
+	const queryId = crypto.randomUUID();
+	const responseId = crypto.randomUUID();
+	const timeZone =
+		options.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+	const params = new URLSearchParams({
+		authorization: `Bearer ${apiKey}`,
+		model: options.model,
+		queryId,
+		responseId,
+		timeZone,
+	});
+
+	if (options.reasoningEffort) {
+		params.set('reasoningEffort', options.reasoningEffort);
+	}
+	if (options.branchId) {
+		params.set('branchId', options.branchId);
+	}
+	if (options.regenerate) {
+		params.set('regenerate', options.regenerate);
+	}
+
+	const wsUrl = `${wsBase}/api/chats/${encodeURIComponent(options.chatId)}/send?${params.toString()}`;
+
+	const node = this.getNode();
+
+	return new Promise<JsonObject>((resolve, reject) => {
+		const ws = new WebSocket(wsUrl);
+
+		const textParts: string[] = [];
+		const reasoningParts: string[] = [];
+		const toolCalls: IDataObject[] = [];
+		let newBranchId: string | undefined;
+		let forkedChatId: string | undefined;
+		let blocked = false;
+		let settled = false;
+
+		const signal = AbortSignal.timeout(300_000);
+		signal.addEventListener('abort', () => {
+			if (!settled) {
+				settled = true;
+				ws.close();
+				reject(
+					new NodeOperationError(
+						node,
+						'WebSocket chat request timed out after 5 minutes.',
+					),
+				);
+			}
+		});
+
+		ws.addEventListener('open', () => {
+			ws.send(
+				JSON.stringify({
+					type: 'user_message',
+					content: options.content,
+				}),
+			);
+		});
+
+		ws.addEventListener('message', (event) => {
+			try {
+				const data = JSON.parse(String(event.data)) as IDataObject;
+
+				switch (data.type) {
+					case 'text':
+						textParts.push(data.text as string);
+						break;
+					case 'reasoning':
+						reasoningParts.push(data.reasoning as string);
+						break;
+					case 'tool_input':
+						toolCalls.push({
+							callId: data.callId,
+							name: data.name,
+							input: data.input,
+						});
+						break;
+					case 'tool_output': {
+						const call = toolCalls.find(
+							(c) => c.callId === data.callId,
+						);
+						if (call) call.output = data.output;
+						break;
+					}
+					case 'branch_created':
+						newBranchId = data.branchId as string;
+						break;
+					case 'chat_forked':
+						forkedChatId = data.chatId as string;
+						break;
+					case 'chat_blocked':
+						blocked = true;
+						break;
+				}
+			} catch {
+				// ignore
+			}
+		});
+
+		ws.addEventListener('close', (event) => {
+			if (settled) return;
+			settled = true;
+
+			if (blocked) {
+				reject(
+					new NodeOperationError(
+						node,
+						'Chat is blocked due to a compliance violation.',
+					),
+				);
+				return;
+			}
+
+			if (event.code !== 1000) {
+				reject(
+					new NodeOperationError(
+						node,
+						`WebSocket closed with unexpected code ${event.code}: ${event.reason}`,
+					),
+				);
+				return;
+			}
+
+			const result: IDataObject = {
+				text: textParts.join(''),
+				chatId: forkedChatId || options.chatId,
+				queryId,
+				responseId,
+			};
+
+			if (reasoningParts.length > 0) {
+				result.reasoning = reasoningParts.join('');
+			}
+
+			if (toolCalls.length > 0) {
+				result.toolCalls = toolCalls;
+			}
+
+			if (newBranchId) {
+				result.branchId = newBranchId;
+			}
+
+			if (forkedChatId) {
+				result.forkedFromChat = options.chatId;
+			}
+
+			resolve(result as JsonObject);
+		});
+
+		ws.addEventListener('error', () => {
+			if (settled) return;
+			settled = true;
+			reject(
+				new NodeOperationError(
+					node,
+					'WebSocket connection failed. Check that the OneAI URL is correct and the server is reachable.',
+				),
+			);
+		});
+	});
+}
+
 export async function oneAiApiRequestAllItems(
 	this: IExecuteFunctions,
 	options: Omit<OneAiApiRequestOptions, 'qs'> & {
