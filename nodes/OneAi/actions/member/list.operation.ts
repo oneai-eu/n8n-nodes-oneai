@@ -82,7 +82,10 @@ export async function execute(
 			qs,
 			itemsKey: 'members',
 		});
-		return this.helpers.returnJsonArray(members);
+		return this.helpers.returnJsonArray(members).map((item, index) => ({
+			...item,
+			pairedItem: { item: index },
+		}));
 	}
 
 	const limit = this.getNodeParameter('limit', index) as number;
@@ -96,5 +99,8 @@ export async function execute(
 	});
 
 	const members = (response.members as IDataObject[]) || [];
-	return this.helpers.returnJsonArray(members);
+	return this.helpers.returnJsonArray(members).map((item, index) => ({
+		...item,
+		pairedItem: { item: index },
+	}));
 }

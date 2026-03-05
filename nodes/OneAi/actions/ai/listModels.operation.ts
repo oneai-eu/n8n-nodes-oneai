@@ -9,5 +9,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		endpoint: '/api/chats/models',
 	});
 
-	return this.helpers.returnJsonArray(response);
+	return this.helpers.returnJsonArray(response).map((item, index) => ({
+		...item,
+		pairedItem: { item: index },
+	}));
 }

@@ -106,7 +106,10 @@ export async function execute(
 			itemsKey: 'logs',
 			paginationKey: 'pagination',
 		});
-		return this.helpers.returnJsonArray(logs);
+		return this.helpers.returnJsonArray(logs).map((item, index) => ({
+			...item,
+			pairedItem: { item: index },
+		}));
 	}
 
 	const limit = this.getNodeParameter('limit', index) as number;
@@ -120,5 +123,8 @@ export async function execute(
 	});
 
 	const logs = (response.logs as IDataObject[]) || [];
-	return this.helpers.returnJsonArray(logs);
+	return this.helpers.returnJsonArray(logs).map((item, index) => ({
+		...item,
+		pairedItem: { item: index },
+	}));
 }

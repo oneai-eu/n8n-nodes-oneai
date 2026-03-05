@@ -78,5 +78,8 @@ export async function execute(
 		body,
 	});
 
-	return this.helpers.returnJsonArray(response);
+	return this.helpers.returnJsonArray(response).map((item, index) => ({
+		...item,
+		pairedItem: { item: index },
+	}));
 }

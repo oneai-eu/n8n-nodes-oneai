@@ -29,5 +29,8 @@ export async function execute(
 		endpoint: `/api/projects/${projectId}`,
 	});
 
-	return this.helpers.returnJsonArray({ success: true });
+	return this.helpers.returnJsonArray({ success: true }).map((item, index) => ({
+		...item,
+		pairedItem: { item: index },
+	}));
 }

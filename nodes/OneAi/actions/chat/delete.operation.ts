@@ -29,5 +29,8 @@ export async function execute(
 		endpoint: `/api/chats/${chatId}`,
 	});
 
-	return this.helpers.returnJsonArray(response);
+	return this.helpers.returnJsonArray(response).map((item, index) => ({
+		...item,
+		pairedItem: { item: index },
+	}));
 }

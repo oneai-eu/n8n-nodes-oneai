@@ -48,7 +48,10 @@ export async function execute(
 			itemsKey: 'apiKeys',
 			paginationKey: 'pagination',
 		});
-		return this.helpers.returnJsonArray(apiKeys);
+		return this.helpers.returnJsonArray(apiKeys).map((item, index) => ({
+			...item,
+			pairedItem: { item: index },
+		}));
 	}
 
 	const limit = this.getNodeParameter('limit', index) as number;
@@ -63,5 +66,8 @@ export async function execute(
 	});
 
 	const apiKeys = (response.apiKeys as IDataObject[]) || [];
-	return this.helpers.returnJsonArray(apiKeys);
+	return this.helpers.returnJsonArray(apiKeys).map((item, index) => ({
+		...item,
+		pairedItem: { item: index },
+	}));
 }

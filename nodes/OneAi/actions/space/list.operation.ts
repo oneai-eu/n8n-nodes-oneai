@@ -120,7 +120,10 @@ export async function execute(
 			qs,
 			itemsKey: 'spaces',
 		});
-		return this.helpers.returnJsonArray(spaces);
+		return this.helpers.returnJsonArray(spaces).map((item, index) => ({
+			...item,
+			pairedItem: { item: index },
+		}));
 	}
 
 	const limit = this.getNodeParameter('limit', index) as number;
@@ -134,5 +137,8 @@ export async function execute(
 	});
 
 	const spaces = (response.spaces as IDataObject[]) || [];
-	return this.helpers.returnJsonArray(spaces);
+	return this.helpers.returnJsonArray(spaces).map((item, index) => ({
+		...item,
+		pairedItem: { item: index },
+	}));
 }
