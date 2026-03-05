@@ -38,7 +38,22 @@ To configure credentials in n8n:
 
 ## Supported Resources & Operations
 
-### Space (16 operations)
+### AI (2 operations)
+
+Send messages to AI models and manage model availability.
+
+| Operation                | Description                                        |
+| ------------------------ | -------------------------------------------------- |
+| Create Response          | Send a message to an AI model and get a response   |
+| List Available AI Models | List all available AI models                       |
+
+**Input modes:**
+- **Messages** — user-friendly role/content fields
+- **JSON** — full control for complex conversations, images, etc.
+
+**Advanced options:** Temperature, Reasoning Effort, Reasoning Summary, Tools (function calling), Chat Association (route through a OneAI chat for context)
+
+### Space (17 operations)
 
 Manage workspaces with support for multiple storage providers (Local, OneDrive, SharePoint, Google Drive, GitHub).
 
@@ -60,35 +75,19 @@ Manage workspaces with support for multiple storage providers (Local, OneDrive, 
 | Remove User     | Remove a user from a space               |
 | Sync            | Synchronize a linked space               |
 | Transfer File   | Move or copy a file between spaces       |
+| Upload File     | Upload a file to a space                 |
 
 ### Chat (6 operations)
 
 Create and manage AI chat conversations.
 
-| Operation   | Description                          |
-| ----------- | ------------------------------------ |
-| Create      | Create a new chat                    |
-| Delete      | Delete a chat                        |
-| Get         | Get chat history                     |
-| Get Models  | List available AI models             |
-| List        | List chats with optional filtering   |
-| Update      | Update chat details (rename or move) |
-
-### OpenAI (1 operation)
-
-Send messages to AI models using the OpenAI-compatible API.
-
-| Operation        | Description                                        |
-| ---------------- | -------------------------------------------------- |
-| Create Response  | Send a message to an AI model and get a response   |
-
-**Supported models:** GPT-5 (Nano, Mini, 5.1, 5.2), Claude (Sonnet, Haiku, Opus), Mistral, Gemini
-
-**Input modes:**
-- **Messages** — user-friendly role/content fields
-- **JSON** — full control for complex conversations, images, etc.
-
-**Advanced options:** Temperature, Reasoning Effort, Reasoning Summary, Tools (function calling)
+| Operation   | Description                                        |
+| ----------- | -------------------------------------------------- |
+| Create      | Create a new chat                                  |
+| Delete      | Delete a chat                                      |
+| Get         | Get chat history                                   |
+| List        | List chats with optional filtering                 |
+| Update      | Update chat details (rename, move, or set branch)  |
 
 ### Artifact (6 operations)
 
@@ -126,7 +125,7 @@ Access references for attaching to conversations and artifacts.
 
 ## Features
 
-- **Multi-model AI access** — query OpenAI, Claude, Mistral, and Gemini models through a single node
+- **Multi-model AI access** — query multiple AI models through a single node
 - **Streaming support** — handles Server-Sent Events for real-time AI responses
 - **Automatic pagination** — list operations transparently handle paginated API responses
 - **Cloud storage integration** — connect spaces to OneDrive, SharePoint, Google Drive, or GitHub
