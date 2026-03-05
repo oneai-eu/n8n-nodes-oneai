@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { oneAiApiRequestStream, oneAiApiRequestWebSocket } from '../../transport';
+import { oneAiApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
@@ -234,22 +234,6 @@ export const description: INodeProperties[] = [
 				description:
 					'Your timezone for timestamp formatting (e.g. "Europe/Berlin"). Defaults to the server timezone if left empty.',
 			},
-			{
-				displayName: 'Branch ID',
-				name: 'branchId',
-				type: 'string',
-				default: '',
-				description:
-					"Send on a specific branch. Defaults to the chat's current branch if left empty.",
-			},
-			{
-				displayName: 'Regenerate Message ID',
-				name: 'regenerate',
-				type: 'string',
-				default: '',
-				description:
-					'Message ID of an assistant message to regenerate. Creates a new branch.',
-			},
 		],
 	},
 ];
@@ -284,8 +268,6 @@ export async function execute(
 		const chatId = this.getNodeParameter('chatId', index) as string;
 		const chatOptions = this.getNodeParameter('chatOptions', index, {}) as {
 			timeZone?: string;
-			branchId?: string;
-			regenerate?: string;
 		};
 		const additionalOptions = this.getNodeParameter('additionalOptions', index) as {
 			reasoningEffort?: string;
@@ -300,14 +282,23 @@ export async function execute(
 		}
 		const content = userMessages.map((m) => m.content as string).join('\n\n');
 
-		const response = await oneAiApiRequestWebSocket.call(this, {
-			chatId,
+		const body: IDataObject = {
+			message: content,
 			model,
-			content,
-			reasoningEffort: additionalOptions.reasoningEffort || undefined,
-			timeZone: chatOptions.timeZone || undefined,
-			branchId: chatOptions.branchId || undefined,
-			regenerate: chatOptions.regenerate || undefined,
+		};
+
+		if (chatOptions.timeZone) {
+			body.timeZone = chatOptions.timeZone;
+		}
+
+		if (additionalOptions.reasoningEffort) {
+			body.reasoningEffort = additionalOptions.reasoningEffort;
+		}
+
+		const response = await oneAiApiRequest.call(this, {
+			method: 'POST',
+			endpoint: `/api/chats/${encodeURIComponent(chatId)}/http`,
+			body,
 		});
 
 		return [
@@ -318,7 +309,6 @@ export async function execute(
 		];
 	}
 
-	// SSE arguments
 	const additionalOptions = this.getNodeParameter('additionalOptions', index) as {
 		temperature?: number;
 		reasoningEffort?: string;
@@ -329,7 +319,6 @@ export async function execute(
 	const body: IDataObject = {
 		model,
 		input,
-		stream: true,
 	};
 
 	if (additionalOptions.temperature !== undefined) {
@@ -351,7 +340,7 @@ export async function execute(
 		body.tools = JSON.parse(additionalOptions.tools as string);
 	}
 
-	const response = await oneAiApiRequestStream.call(this, {
+	const response = await oneAiApiRequest.call(this, {
 		method: 'POST',
 		endpoint: '/api/openai/v1/responses',
 		body,
