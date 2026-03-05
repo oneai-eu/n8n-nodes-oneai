@@ -1,3 +1,5 @@
+declare class Buffer extends Uint8Array {}
+
 declare class URLSearchParams {
 	constructor(init?: Record<string, string>);
 	set(name: string, value: string): void;

@@ -8,7 +8,7 @@ A community node for [n8n](https://n8n.io/) that integrates with the [OneAI](htt
 
 1. Go to **Settings > Community Nodes**
 2. Select **Install a community node**
-3. Enter `n8n-nodes-oneai`
+3. Enter `@oneai-eu/n8n-nodes-oneai`
 4. Agree to the risks and click **Install**
 
 ### Manual / Development

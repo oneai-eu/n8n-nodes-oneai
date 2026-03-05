@@ -7,7 +7,7 @@ import * as artifact from './artifact';
 import * as chat from './chat';
 // import * as complianceLlm from './complianceLlm';
 // import * as member from './member';
-import * as openai from './openai';
+import * as ai from './ai';
 // import * as organization from './organization';
 import * as project from './project';
 import * as reference from './reference';
@@ -110,10 +110,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						case 'get':
 							responseData = await chat.get.execute.call(this, i);
 							break;
-						case 'getModels':
-							responseData = await chat.getModels.execute.call(this);
-							break;
-						case 'list':
+	case 'list':
 							responseData = await chat.list.execute.call(this, i);
 							break;
 						case 'update':
@@ -145,10 +142,13 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				// 	}
 				// 	break;
 
-				case 'openai':
+				case 'ai':
 					switch (operation) {
 						case 'createResponse':
-							responseData = await openai.createResponse.execute.call(this, i);
+							responseData = await ai.createResponse.execute.call(this, i);
+							break;
+						case 'listModels':
+							responseData = await ai.listModels.execute.call(this);
 							break;
 						default:
 							throw new NodeOperationError(
@@ -306,6 +306,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 							break;
 						case 'transferFile':
 							responseData = await space.transferFile.execute.call(this, i);
+							break;
+						case 'uploadFile':
+							responseData = await space.uploadFile.execute.call(this, i);
 							break;
 						default:
 							throw new NodeOperationError(

@@ -51,6 +51,46 @@ export async function oneAiApiRequest(
 	}
 }
 
+export interface OneAiApiBinaryRequestOptions {
+	method: IHttpRequestMethods;
+	endpoint: string;
+	body: Buffer;
+	qs?: IDataObject;
+}
+
+export async function oneAiApiRequestBinary(
+	this: IExecuteFunctions,
+	options: OneAiApiBinaryRequestOptions,
+): Promise<JsonObject> {
+	const credentials = await this.getCredentials('oneAiApi');
+
+	const baseUrl = (credentials.url as string).replace(/\/$/, '');
+
+	const requestOptions: IHttpRequestOptions = {
+		method: options.method,
+		url: `${baseUrl}${options.endpoint}`,
+		headers: {
+			'Content-Type': 'application/octet-stream',
+		},
+		body: options.body,
+	};
+
+	if (options.qs && Object.keys(options.qs).length > 0) {
+		requestOptions.qs = options.qs;
+	}
+
+	try {
+		const response = await this.helpers.httpRequestWithAuthentication.call(
+			this,
+			'oneAiApi',
+			requestOptions,
+		);
+		return response as JsonObject;
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
+
 export async function oneAiApiRequestOpenAi(
 	this: IExecuteFunctions,
 	options: OneAiApiRequestOptions,

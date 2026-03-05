@@ -16,6 +16,7 @@ import * as removeTeam from './removeTeam.operation';
 import * as removeUser from './removeUser.operation';
 import * as sync from './sync.operation';
 import * as transferFile from './transferFile.operation';
+import * as uploadFile from './uploadFile.operation';
 
 export {
 	addTeam,
@@ -34,6 +35,7 @@ export {
 	removeUser,
 	sync,
 	transferFile,
+	uploadFile,
 };
 
 export const description: INodeProperties[] = [
@@ -144,6 +146,12 @@ export const description: INodeProperties[] = [
 				description: 'Move or copy a file between spaces',
 				action: 'Transfer file between spaces',
 			},
+			{
+				name: 'Upload File',
+				value: 'uploadFile',
+				description: 'Upload a file to a space',
+				action: 'Upload file to space',
+			},
 		],
 		default: 'list',
 	},
@@ -163,4 +171,5 @@ export const description: INodeProperties[] = [
 	...removeUser.description,
 	...sync.description,
 	...transferFile.description,
+	...uploadFile.description,
 ];

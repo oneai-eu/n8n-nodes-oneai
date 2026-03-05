@@ -1,6 +1,8 @@
 import type {
 	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -11,7 +13,7 @@ import * as artifact from './actions/artifact';
 import * as chat from './actions/chat';
 // import * as complianceLlm from './actions/complianceLlm';
 // import * as member from './actions/member';
-import * as openai from './actions/openai';
+import * as ai from './actions/ai';
 // import * as organization from './actions/organization';
 import * as project from './actions/project';
 import * as reference from './actions/reference';
@@ -47,6 +49,10 @@ export class OneAi implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				options: [
+					{
+						name: 'AI',
+						value: 'ai',
+					},
 					// {
 					// 	name: 'API Key',
 					// 	value: 'apiKey',
@@ -71,10 +77,6 @@ export class OneAi implements INodeType {
 					// 	name: 'Member',
 					// 	value: 'member',
 					// },
-					{
-						name: 'OpenAI',
-						value: 'openai',
-					},
 					// {
 					// 	name: 'Organization',
 					// 	value: 'organization',
@@ -108,7 +110,7 @@ export class OneAi implements INodeType {
 			...chat.description,
 			// ...complianceLlm.description,
 			// ...member.description,
-			...openai.description,
+			...ai.description,
 			// ...organization.description,
 			...project.description,
 			...reference.description,
@@ -117,6 +119,38 @@ export class OneAi implements INodeType {
 			// ...team.description,
 		],
 		usableAsTool: true,
+	};
+
+	methods = {
+		loadOptions: {
+			async getModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				try {
+					const credentials = await this.getCredentials('oneAiApi');
+					const baseUrl = (credentials.url as string).replace(/\/$/, '');
+					const response = await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						'oneAiApi',
+						{
+							method: 'GET',
+							url: `${baseUrl}/api/chats/models`,
+							headers: { Accept: 'application/json' },
+						},
+					);
+					const models = response as Array<{
+						name: string;
+						model: string;
+						description: string;
+					}>;
+					return models.map((m) => ({
+						name: m.name,
+						value: m.model,
+						description: m.description,
+					}));
+				} catch {
+					return [{ name: 'Unauthenticated', value: '' }];
+				}
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

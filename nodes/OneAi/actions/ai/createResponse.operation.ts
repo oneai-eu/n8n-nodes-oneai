@@ -10,95 +10,21 @@ import { oneAiApiRequestStream, oneAiApiRequestWebSocket } from '../../transport
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Model',
+		displayName: 'Model Name or ID',
 		name: 'model',
 		type: 'options',
 		required: true,
-		default: 'gpt-5-nano',
-		description: 'The model to use for generating the response',
+		default: '',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+		typeOptions: {
+			loadOptionsMethod: 'getModels',
+		},
 		displayOptions: {
 			show: {
-				resource: ['openai'],
+				resource: ['ai'],
 				operation: ['createResponse'],
 			},
 		},
-		options: [
-			{
-				name: 'Gemini 2.5 Flash',
-				value: 'gemini-2.5-flash',
-				description: 'Google\'s best model in terms of performance, offering well-rounded capabilities',
-			},
-			{
-				name: 'Gemini 2.5 Flash Lite',
-				value: 'gemini-2.5-flash-lite',
-				description: 'Google\'s most cost-effective model that supports high throughput tasks',
-			},
-			{
-				name: 'Gemini 3 Pro',
-				value: 'gemini-3-pro-preview',
-				description: 'Google\'s most powerful agentic and vibe-coding model yet',
-			},
-			{
-				name: 'GPT-5 Mini',
-				value: 'gpt-5-mini',
-				description: 'Faster, more cost-efficient version of GPT-5, great for well-defined tasks and precise prompts. Created by OpenAI.',
-			},
-			{
-				name: 'GPT-5 Nano',
-				value: 'gpt-5-nano',
-				description: 'Fastest, cheapest version of GPT-5, great for summarization and classification. Created by OpenAI.',
-			},
-			{
-				name: 'GPT-5.1',
-				value: 'gpt-5.1',
-				description: 'Previous flagship model for coding, reasoning, and agentic tasks. Created by OpenAI.',
-			},
-			{
-				name: 'GPT-5.2',
-				value: 'gpt-5.2',
-				description: 'Flagship model for coding, reasoning, and agentic tasks. Created by OpenAI.',
-			},
-			{
-				name: 'Haiku 4.5',
-				value: 'claude-haiku-4-5',
-				description: 'Anthropic\'s fastest model with near-frontier intelligence',
-			},
-			{
-				name: 'Magistral Medium',
-				value: 'magistral-medium-latest',
-				description: 'Mistral\'s frontier-class reasoning model',
-			},
-			{
-				name: 'Magistral Small',
-				value: 'magistral-small-latest',
-				description: 'Mistral\'s small reasoning model, suitable for tasks requiring basic reasoning',
-			},
-			{
-				name: 'Mistral Large',
-				value: 'mistral-large-latest',
-				description: 'Mistral\'s large model for complex tasks and applications',
-			},
-			{
-				name: 'Mistral Medium',
-				value: 'mistral-medium-latest',
-				description: 'Mistral\'s frontier-class model for general-purpose use cases',
-			},
-			{
-				name: 'Mistral Small',
-				value: 'mistral-small-latest',
-				description: 'Mistral\'s small model, suitable for basic tasks and lightweight applications',
-			},
-			{
-				name: 'Opus 4.5',
-				value: 'claude-opus-4-5',
-				description: 'Anthropic\'s premium model combining maximum intelligence with practical performance',
-			},
-			{
-				name: 'Sonnet 4.5',
-				value: 'claude-sonnet-4-5',
-				description: 'Anthropic\'s smartest model for complex agents and coding',
-			},
-		],
 	},
 	{
 		displayName: 'Input Mode',
@@ -122,7 +48,7 @@ export const description: INodeProperties[] = [
 		description: 'How to provide the input to the model',
 		displayOptions: {
 			show: {
-				resource: ['openai'],
+				resource: ['ai'],
 				operation: ['createResponse'],
 			},
 		},
@@ -140,7 +66,7 @@ export const description: INodeProperties[] = [
 		description: 'The messages to send to the model',
 		displayOptions: {
 			show: {
-				resource: ['openai'],
+				resource: ['ai'],
 				operation: ['createResponse'],
 				inputMode: ['messages'],
 			},
@@ -188,7 +114,7 @@ export const description: INodeProperties[] = [
 			'Array of message objects. Each message needs "role" (user/assistant/system/developer) and "content" (string or content array).',
 		displayOptions: {
 			show: {
-				resource: ['openai'],
+				resource: ['ai'],
 				operation: ['createResponse'],
 				inputMode: ['json'],
 			},
@@ -202,7 +128,7 @@ export const description: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['openai'],
+				resource: ['ai'],
 				operation: ['createResponse'],
 			},
 		},
@@ -264,7 +190,7 @@ export const description: INodeProperties[] = [
 			'Whether to send the message through a OneAI chat instead of the OpenAI create response endpoint directly. This allows resuming a chat or simply have a context for requests. This requires a reasoning effort.',
 		displayOptions: {
 			show: {
-				resource: ['openai'],
+				resource: ['ai'],
 				operation: ['createResponse'],
 			},
 		},
@@ -279,7 +205,7 @@ export const description: INodeProperties[] = [
 			'The ID of the chat to send the message in. Create a chat first using the Chat > Create operation.',
 		displayOptions: {
 			show: {
-				resource: ['openai'],
+				resource: ['ai'],
 				operation: ['createResponse'],
 				associateChat: [true],
 			},
@@ -293,7 +219,7 @@ export const description: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['openai'],
+				resource: ['ai'],
 				operation: ['createResponse'],
 				associateChat: [true],
 			},
