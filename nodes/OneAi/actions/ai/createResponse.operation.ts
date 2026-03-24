@@ -151,7 +151,6 @@ export const description: INodeProperties[] = [
 				name: 'reasoningEffort',
 				type: 'options',
 				options: [
-					{ name: 'Minimal', value: 'minimal' },
 					{ name: 'Low', value: 'low' },
 					{ name: 'Medium', value: 'medium' },
 					{ name: 'High', value: 'high' },
