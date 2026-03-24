@@ -4,26 +4,7 @@ A community node for [n8n](https://n8n.io/) that integrates with the [OneAI](htt
 
 ## Installation
 
-### In n8n (Community Node)
-
-1. Go to **Settings > Community Nodes**
-2. Select **Install a community node**
-3. Enter `@oneai-eu/n8n-nodes-oneai`
-4. Agree to the risks and click **Install**
-
-### Manual / Development
-
-```bash
-# Clone the repository
-git clone https://github.com/oneai-eu/n8n-nodes-oneai
-cd n8n-nodes-oneai
-
-# Install dependencies
-pnpm install
-
-# Build
-pnpm build
-```
+The OneAI node is available on every n8n instance by default. Simply search for **OneAI** in the node panel and install it from there.
 
 ## Authentication
 
@@ -122,6 +103,12 @@ Access references for attaching to conversations and artifacts.
 | ------------ | --------------------------------------------------- |
 | List Files   | List files accessible for attaching as references   |
 | List Spaces  | List spaces accessible for attaching as references  |
+
+### Miscellaneous (1 operation)
+
+| Operation              | Description                                              |
+| ---------------------- | -------------------------------------------------------- |
+| Check Authentication   | Check the authenticated user and return their details    |
 
 ## Features
 
