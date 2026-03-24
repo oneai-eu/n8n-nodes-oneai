@@ -134,19 +134,6 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Temperature',
-				name: 'temperature',
-				type: 'number',
-				typeOptions: {
-					minValue: 0,
-					maxValue: 2,
-					numberPrecision: 1,
-				},
-				default: 1,
-				description:
-					'Sampling temperature (0-2). Lower values are more focused, higher values are more random.',
-			},
-			{
 				displayName: 'Reasoning Effort',
 				name: 'reasoningEffort',
 				type: 'options',
@@ -158,26 +145,6 @@ export const description: INodeProperties[] = [
 				default: 'medium',
 				description: 'How much reasoning effort the model should use',
 			},
-			{
-				displayName: 'Reasoning Summary',
-				name: 'reasoningSummary',
-				type: 'options',
-				options: [
-					{ name: 'Auto', value: 'auto' },
-					{ name: 'Concise', value: 'concise' },
-					{ name: 'Detailed', value: 'detailed' },
-				],
-				default: 'auto',
-				description: 'How to summarize the reasoning process',
-			},
-			{
-				displayName: 'Tools (JSON)',
-				name: 'tools',
-				type: 'json',
-				default: '',
-				description:
-					'JSON array of tool definitions. Each tool needs "type", "name", "parameters" (JSON Schema), and optionally "description" and "strict".',
-			},
 		],
 	},
 	{
@@ -186,7 +153,7 @@ export const description: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		description:
-			'Whether to send the message through a OneAI chat instead of the OpenAI create response endpoint directly. This allows resuming a chat or simply have a context for requests. This requires a reasoning effort.',
+			'Whether to use an existing OneAI chat. When disabled, a new chat is automatically created in your personal project.',
 		displayOptions: {
 			show: {
 				resource: ['ai'],
@@ -220,7 +187,6 @@ export const description: INodeProperties[] = [
 			show: {
 				resource: ['ai'],
 				operation: ['createResponse'],
-				associateChat: [true],
 			},
 		},
 		options: [
@@ -262,110 +228,82 @@ export async function execute(
 		input = JSON.parse(messagesJson) as IDataObject[];
 	}
 
-	// if associate chat, then apply the chatoptions.
-	if (associateChat) {
-		const chatId = this.getNodeParameter('chatId', index) as string;
-		const chatOptions = this.getNodeParameter('chatOptions', index, {}) as {
-			timeZone?: string;
-		};
-		const additionalOptions = this.getNodeParameter('additionalOptions', index) as {
-			reasoningEffort?: string;
-		};
 
-		const userMessages = input.filter((m) => m.role === 'user');
-		if (userMessages.length === 0) {
+	let chatId: string;
+	if (associateChat) {
+		chatId = this.getNodeParameter('chatId', index) as string;
+	} else {
+		const authResponse = await oneAiApiRequest.call(this, {
+			method: 'GET',
+			endpoint: '/api/auth/check',
+		});
+		const personalProject = authResponse.personalProject as string;
+		this.logger.info(personalProject)
+		
+		if (!personalProject) {
 			throw new NodeOperationError(
 				this.getNode(),
-				'At least one user message is required when using chat association.',
+				'Could not determine personal project ID from authentication.',
 			);
 		}
-		const content = userMessages.map((m) => m.content as string).join('\n\n');
 
-		const body: IDataObject = {
-			message: content,
-			model,
-		};
-
-		if (chatOptions.timeZone) {
-			body.timeZone = chatOptions.timeZone;
-		}
-
-		if (additionalOptions.reasoningEffort) {
-			body.reasoningEffort = additionalOptions.reasoningEffort;
-		}
-
-		const response = await oneAiApiRequest.call(this, {
+		const chatName = `n8n-${new Date().toISOString().slice(0, 19).replace('T', '-')}`;
+		const chatResponse = await oneAiApiRequest.call(this, {
 			method: 'POST',
-			endpoint: `/api/chats/${encodeURIComponent(chatId)}/http`,
-			body,
+			endpoint: '/api/chats',
+			body: { spaceId: personalProject, name: chatName, origin: 'n8n' },
 		});
-
-		return [
-			{
-				json: response as IDataObject,
-				pairedItem: { item: index },
-			},
-		];
+		chatId = chatResponse.chatId as string;
+		this.logger.info(chatId)
 	}
 
-	const additionalOptions = this.getNodeParameter('additionalOptions', index) as {
-		temperature?: number;
-		reasoningEffort?: string;
-		reasoningSummary?: string;
-		tools?: string;
+	const chatOptions = this.getNodeParameter('chatOptions', index, {}) as {
+		timeZone?: string;
 	};
+	const additionalOptions = this.getNodeParameter('additionalOptions', index) as {
+		reasoningEffort?: string;
+	};
+
+	const modelsResponse = await oneAiApiRequest.call(this, {
+		method: 'GET',
+		endpoint: '/api/chats/models',
+	});
+	const models = modelsResponse as unknown as Array<{ id: string; reasoning: boolean }>;
+	const modelInfo = Array.isArray(models) ? models.find((m) => m.id === model) : undefined;
+
+	const userMessages = input.filter((m) => m.role === 'user');
+	if (userMessages.length === 0) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'At least one user message is required.',
+		);
+	}
+	const content = userMessages.map((m) => m.content as string).join('\n\n');
 
 	const body: IDataObject = {
+		message: content,
 		model,
-		input,
 	};
 
-	if (additionalOptions.temperature !== undefined) {
-		body.temperature = additionalOptions.temperature;
+	if (chatOptions.timeZone) {
+		body.timeZone = chatOptions.timeZone;
 	}
 
-	if (additionalOptions.reasoningEffort || additionalOptions.reasoningSummary) {
-		const reasoning: IDataObject = {};
-		if (additionalOptions.reasoningEffort) {
-			reasoning.effort = additionalOptions.reasoningEffort;
-		}
-		if (additionalOptions.reasoningSummary) {
-			reasoning.summary = additionalOptions.reasoningSummary;
-		}
-		body.reasoning = reasoning;
-	}
-
-	if (additionalOptions.tools) {
-		body.tools = JSON.parse(additionalOptions.tools as string);
+	// ! only send reasoningEffort when the model supports reasoning
+	if (modelInfo?.reasoning) {
+		body.reasoningEffort = additionalOptions.reasoningEffort || 'medium';
 	}
 
 	const response = await oneAiApiRequest.call(this, {
 		method: 'POST',
-		endpoint: '/api/openai/v1/responses',
+		endpoint: `/api/chats/${encodeURIComponent(chatId)}/http`,
 		body,
 	});
-
-	let text = '';
-	const output = response.output as IDataObject[] | undefined;
-	if (output && Array.isArray(output)) {
-		for (const item of output) {
-			if (item.type === 'message') {
-				const content = item.content as IDataObject[] | undefined;
-				if (content && Array.isArray(content)) {
-					for (const part of content) {
-						if (part.type === 'output_text' && part.text) {
-							text += (text ? '\n' : '') + (part.text as string);
-						}
-					}
-				}
-			}
-		}
-	}
 
 	return [
 		{
 			json: {
-				text,
+				text: (response as IDataObject).response,
 				...(response as IDataObject),
 			},
 			pairedItem: { item: index },

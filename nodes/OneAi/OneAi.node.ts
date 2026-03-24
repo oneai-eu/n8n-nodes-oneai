@@ -143,13 +143,13 @@ export class OneAi implements INodeType {
 						},
 					);
 					const models = response as Array<{
+						id: string;
 						name: string;
-						model: string;
 						description: string;
 					}>;
 					return models.map((m) => ({
 						name: m.name,
-						value: m.model,
+						value: m.id,
 						description: m.description,
 					}));
 				} catch {
