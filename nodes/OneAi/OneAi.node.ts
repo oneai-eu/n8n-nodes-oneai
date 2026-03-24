@@ -14,6 +14,7 @@ import * as chat from './actions/chat';
 // import * as complianceLlm from './actions/complianceLlm';
 // import * as member from './actions/member';
 import * as ai from './actions/ai';
+import * as checkAuth from './actions/misc';
 // import * as organization from './actions/organization';
 import * as project from './actions/project';
 import * as reference from './actions/reference';
@@ -69,6 +70,10 @@ export class OneAi implements INodeType {
 						name: 'Chat',
 						value: 'chat',
 					},
+					{
+						name: 'Miscellaneous',
+						value: 'miscellaneous'
+					},
 					// {
 					// 	name: 'Compliance LLM',
 					// 	value: 'complianceLlm',
@@ -106,6 +111,7 @@ export class OneAi implements INodeType {
 			},
 			// ...apiKey.description,
 			...artifact.description,
+			...checkAuth.description,
 			// ...auditLog.description,
 			...chat.description,
 			// ...complianceLlm.description,

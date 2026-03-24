@@ -3,6 +3,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 // import * as apiKey from './apiKey';
 import * as artifact from './artifact';
+import * as auth from './misc';
 // import * as auditLog from './auditLog';
 import * as chat from './chat';
 // import * as complianceLlm from './complianceLlm';
@@ -53,7 +54,21 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				// 	}
 				// 	break;
 
-				case 'artifact':
+				case 'miscellaneous':
+				switch (operation) {
+					case 'checkAuth':
+						responseData = await auth.checkAuth.execute.call(this, i);
+						break;
+					default:
+						throw new NodeOperationError(
+							this.getNode(),
+							`Unknown operation: ${operation}`,
+							{ itemIndex: i },
+						);
+				}
+				break;
+
+			case 'artifact':
 					switch (operation) {
 						case 'create':
 							responseData = await artifact.create.execute.call(this, i);
