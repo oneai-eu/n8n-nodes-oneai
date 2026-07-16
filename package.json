@@ -1,7 +1,7 @@
 {
 	"name": "@oneai-eu/n8n-nodes-oneai",
 	"version": "0.1.8",
-	"description": "A n8n community node for interacting with the OneAI API.",
+	"description": "A n8n community node for interacting with the oneAI API.",
 	"keywords": [
 		"n8n-community-node-package",
 		"oneai",
@@ -11,7 +11,7 @@
 	"license": "MIT",
 	"homepage": "https://oneai.eu",
 	"author": {
-		"name": "OneAI",
+		"name": "oneAI",
 		"email": "dev@oneai.eu"
 	},
 	"repository": {

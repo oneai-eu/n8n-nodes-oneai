@@ -1,10 +1,10 @@
 # n8n-nodes-oneai
 
-A community node for [n8n](https://n8n.io/) that integrates with the [OneAI](https://oneai.eu) platform — an AI hub providing access to multiple AI models and collaboration features.
+A community node for [n8n](https://n8n.io/) that integrates with the [oneAI](https://oneai.eu) platform — an AI hub providing access to multiple AI models and collaboration features.
 
 ## Installation
 
-The OneAI node is available on every n8n instance by default. Simply search for **OneAI** in the node panel and install it from there.
+The oneAI node is available on every n8n instance by default. Simply search for **oneAI** in the node panel and install it from there.
 
 ## Authentication
 
@@ -14,8 +14,8 @@ To configure credentials in n8n:
 
 | Field       | Description                                          |
 | ----------- | ---------------------------------------------------- |
-| **OneAI URL** | Base URL of your OneAI instance (e.g. `https://hub.oneai.eu`) |
-| **API Key**   | Your API key, generated from your OneAI hub settings          |
+| **oneAI URL** | Base URL of your oneAI instance (e.g. `https://hub.oneai.eu`) |
+| **API Key**   | Your API key, generated from your oneAI hub settings          |
 
 ## Supported Resources & Operations
 
@@ -32,7 +32,7 @@ Send messages to AI models and manage model availability.
 - **Messages** — user-friendly role/content fields
 - **JSON** — full control for complex conversations, images, etc.
 
-**Advanced options:** Temperature, Reasoning Effort, Reasoning Summary, Tools (function calling), Chat Association (route through a OneAI chat for context)
+**Advanced options:** Temperature, Reasoning Effort, Reasoning Summary, Tools (function calling), Chat Association (route through a oneAI chat for context)
 
 ### Space (17 operations)
 

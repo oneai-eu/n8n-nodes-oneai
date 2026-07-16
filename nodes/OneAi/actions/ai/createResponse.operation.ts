@@ -153,7 +153,7 @@ export const description: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		description:
-			'Whether to use an existing OneAI chat. When disabled, a new chat is automatically created in your personal project.',
+			'Whether to use an existing oneAI chat. When disabled, a new chat is automatically created in your personal project.',
 		displayOptions: {
 			show: {
 				resource: ['ai'],

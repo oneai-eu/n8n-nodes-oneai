@@ -20,15 +20,15 @@ import { filterOperations, filterResources } from './modes';
 
 export class OneAi implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'OneAI',
+		displayName: 'oneAI',
 		name: 'oneAi',
 		icon: 'file:oneai.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Interact with the OneAI API',
+		description: 'Interact with the oneAI API',
 		defaults: {
-			name: 'OneAI',
+			name: 'oneAI',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

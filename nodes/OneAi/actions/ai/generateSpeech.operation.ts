@@ -86,7 +86,7 @@ export const description: INodeProperties[] = [
 				type: 'string',
 				default: 'gpt-4o-mini-tts',
 				description:
-					'The text-to-speech model to use. Supported models depend on your OneAI instance.',
+					'The text-to-speech model to use. Supported models depend on your oneAI instance.',
 			},
 		],
 	},

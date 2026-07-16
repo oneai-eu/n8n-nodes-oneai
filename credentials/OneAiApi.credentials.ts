@@ -8,7 +8,7 @@ import type {
 export class OneAiApi implements ICredentialType {
 	name = 'oneAiApi';
 
-	displayName = 'OneAI API';
+	displayName = 'oneAI API';
 
 	icon = 'file:oneai.svg' as const;
 
@@ -16,12 +16,12 @@ export class OneAiApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'OneAI URL',
+			displayName: 'oneAI URL',
 			name: 'url',
 			type: 'string',
 			default: '',
 			placeholder: 'https://hub.oneai.eu',
-			description: 'The base URL of your OneAI instance',
+			description: 'The base URL of your oneAI instance',
 			required: true,
 		},
 		{
@@ -33,7 +33,7 @@ export class OneAiApi implements ICredentialType {
 			},
 			default: '',
 			description:
-				'Your OneAI API key (generated in the hub settings). Gateway-plan keys start with "oai-gk_" and are validated against the OneAI Gateway; all other keys ("oai_") are validated against the hub.',
+				'Your oneAI API key (generated in the hub settings). Gateway-plan keys start with "oai-gk_" and are validated against the oneAI Gateway; all other keys ("oai_") are validated against the hub.',
 			required: true,
 		},
 		{
@@ -42,7 +42,7 @@ export class OneAiApi implements ICredentialType {
 			type: 'boolean',
 			default: false,
 			description:
-				'Whether to expose only the OneAI Gateway features (AI inference: chat, image generation, embeddings, transcription). When off, the full hub feature set is available (projects, spaces, artifacts, etc.). Switching this on hides hub-only resources; if a workflow was built against the hub, you may need to re-select the resource.',
+				'Whether to expose only the oneAI Gateway features (AI inference: chat, image generation, embeddings, transcription). When off, the full hub feature set is available (projects, spaces, artifacts, etc.). Switching this on hides hub-only resources; if a workflow was built against the hub, you may need to re-select the resource.',
 		},
 	];
 
@@ -55,7 +55,7 @@ export class OneAiApi implements ICredentialType {
 		},
 	};
 
-	// Gateway-plan keys ("oai-gk_") only reach the OneAI Gateway, so validate
+	// Gateway-plan keys ("oai-gk_") only reach the oneAI Gateway, so validate
 	// them against a gateway GET endpoint (`/api/openai/v1/models`) rather than
 	// the hub. Hub keys ("oai_") keep being validated against `/api/auth/check`.
 	// Testing each key against the surface it is actually used on avoids a false
