@@ -6,6 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import * as artifact from './actions/artifact';
 import * as chat from './actions/chat';
@@ -30,8 +31,8 @@ export class OneAi implements INodeType {
 		defaults: {
 			name: 'oneAI',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'oneAiApi',
@@ -166,6 +167,9 @@ export class OneAi implements INodeType {
 		},
 	};
 
+	// continueOnFail() is handled per item inside router() (see actions/router.ts),
+	// which owns the item loop and try/catch for every resource/operation.
+	// eslint-disable-next-line @n8n/community-nodes/require-continue-on-fail
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		return router.call(this);
 	}

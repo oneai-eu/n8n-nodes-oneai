@@ -1,5 +1,5 @@
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData, JsonObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import * as artifact from './artifact';
 import * as auth from './misc';
@@ -287,7 +287,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				returnData.push({ json: { error: (error as Error).message }, pairedItem: { item: i } });
 				continue;
 			}
-			throw error;
+			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
 	}
 
