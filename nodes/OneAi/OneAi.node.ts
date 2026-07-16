@@ -7,21 +7,16 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-// import * as apiKey from './actions/apiKey';
 import * as artifact from './actions/artifact';
-// import * as auditLog from './actions/auditLog';
 import * as chat from './actions/chat';
-// import * as complianceLlm from './actions/complianceLlm';
-// import * as member from './actions/member';
 import * as ai from './actions/ai';
+import * as compliancePattern from './actions/compliancePattern';
 import * as checkAuth from './actions/misc';
-// import * as organization from './actions/organization';
 import * as project from './actions/project';
 import * as reference from './actions/reference';
 import { router } from './actions/router';
 import * as space from './actions/space';
-// import * as stats from './actions/stats';
-// import * as team from './actions/team';
+import { filterOperations, filterResources } from './modes';
 
 export class OneAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -45,90 +40,66 @@ export class OneAi implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Resource',
+				displayName: 'Resource Name or ID',
 				name: 'resource',
 				type: 'options',
 				noDataExpression: true,
-				options: [
-					{
-						name: 'AI',
-						value: 'ai',
-					},
-					// {
-					// 	name: 'API Key',
-					// 	value: 'apiKey',
-					// },
-					{
-						name: 'Artifact',
-						value: 'artifact',
-					},
-					// {
-					// 	name: 'Audit Log',
-					// 	value: 'auditLog',
-					// },
-					{
-						name: 'Chat',
-						value: 'chat',
-					},
-					{
-						name: 'Miscellaneous',
-						value: 'miscellaneous'
-					},
-					// {
-					// 	name: 'Compliance LLM',
-					// 	value: 'complianceLlm',
-					// },
-					// {
-					// 	name: 'Member',
-					// 	value: 'member',
-					// },
-					// {
-					// 	name: 'Organization',
-					// 	value: 'organization',
-					// },
-					{
-						name: 'Project',
-						value: 'project',
-					},
-					{
-						name: 'Reference',
-						value: 'reference',
-					},
-					{
-						name: 'Space',
-						value: 'space',
-					},
-					// {
-					// 	name: 'Stats',
-					// 	value: 'stats',
-					// },
-					// {
-					// 	name: 'Team',
-					// 	value: 'team',
-					// },
-				],
-				default: 'project',
+				typeOptions: {
+					loadOptionsMethod: 'getResources',
+				},
+				default: 'ai',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 			},
-			// ...apiKey.description,
+			{
+				displayName: 'Operation Name or ID',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				typeOptions: {
+					loadOptionsMethod: 'getOperations',
+					loadOptionsDependsOn: ['resource'],
+				},
+				default: 'createResponse',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+			},
 			...artifact.description,
 			...checkAuth.description,
-			// ...auditLog.description,
 			...chat.description,
-			// ...complianceLlm.description,
-			// ...member.description,
 			...ai.description,
-			// ...organization.description,
+			...compliancePattern.description,
 			...project.description,
 			...reference.description,
 			...space.description,
-			// ...stats.description,
-			// ...team.description,
 		],
 		usableAsTool: true,
 	};
 
 	methods = {
 		loadOptions: {
+			async getResources(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				let gatewayOnly = false;
+				try {
+					const credentials = await this.getCredentials('oneAiApi');
+					gatewayOnly = credentials.gatewayOnly === true;
+				} catch {
+					// No credentials yet — show everything so first-time setup works
+				}
+				return filterResources(gatewayOnly);
+			},
+			async getOperations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const resource = this.getCurrentNodeParameter('resource') as string;
+				if (!resource) return [];
+				let gatewayOnly = false;
+				try {
+					const credentials = await this.getCredentials('oneAiApi');
+					gatewayOnly = credentials.gatewayOnly === true;
+				} catch {
+					// No credentials yet — show everything
+				}
+				return filterOperations(resource, gatewayOnly);
+			},
 			async getModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				try {
 					const credentials = await this.getCredentials('oneAiApi');
@@ -152,6 +123,42 @@ export class OneAi implements INodeType {
 						value: m.id,
 						description: m.description,
 					}));
+				} catch {
+					return [{ name: 'Unauthenticated', value: '' }];
+				}
+			},
+			async getImageModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				try {
+					const credentials = await this.getCredentials('oneAiApi');
+					const baseUrl = (credentials.url as string).replace(/\/$/, '');
+					const response = await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						'oneAiApi',
+						{
+							method: 'GET',
+							url: `${baseUrl}/api/image-models`,
+							headers: { Accept: 'application/json' },
+						},
+					);
+					const { models, defaultModelId } = response as {
+						models: Array<{ id: string; name: string; provider: string; isDefault: boolean }>;
+						defaultModelId: string;
+					};
+					const options: INodePropertyOptions[] = [
+						{
+							name: `Organization Default${defaultModelId ? ` (${defaultModelId})` : ''}`,
+							value: '',
+							description: 'Use the organization default image model',
+						},
+					];
+					for (const m of models) {
+						options.push({
+							name: `${m.name}${m.isDefault ? ' (default)' : ''}`,
+							value: m.id,
+							description: `Provider: ${m.provider}`,
+						});
+					}
+					return options;
 				} catch {
 					return [{ name: 'Unauthenticated', value: '' }];
 				}

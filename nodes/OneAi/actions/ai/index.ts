@@ -1,37 +1,32 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import * as createEmbedding from './createEmbedding.operation';
 import * as createResponse from './createResponse.operation';
+import * as editImage from './editImage.operation';
+import * as generateImage from './generateImage.operation';
+import * as generateSpeech from './generateSpeech.operation';
+import * as listImageModels from './listImageModels.operation';
 import * as listModels from './listModels.operation';
+import * as transcribeAudio from './transcribeAudio.operation';
 
-export { createResponse, listModels };
+export {
+	createEmbedding,
+	createResponse,
+	editImage,
+	generateImage,
+	generateSpeech,
+	listImageModels,
+	listModels,
+	transcribeAudio,
+};
 
 export const description: INodeProperties[] = [
-	{
-		displayName: 'Operation',
-		name: 'operation',
-		type: 'options',
-		noDataExpression: true,
-		displayOptions: {
-			show: {
-				resource: ['ai'],
-			},
-		},
-		options: [
-			{
-				name: 'Create Response',
-				value: 'createResponse',
-				description: 'Send a message to an AI model and get a response',
-				action: 'Create a response',
-			},
-			{
-				name: 'List Available AI Models',
-				value: 'listModels',
-				description: 'List all available AI models',
-				action: 'List available AI models',
-			},
-		],
-		default: 'createResponse',
-	},
+	...createEmbedding.description,
 	...createResponse.description,
+	...editImage.description,
+	...generateImage.description,
+	...generateSpeech.description,
+	...listImageModels.description,
 	...listModels.description,
+	...transcribeAudio.description,
 ];

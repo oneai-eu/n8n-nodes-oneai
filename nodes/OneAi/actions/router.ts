@@ -1,20 +1,15 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-// import * as apiKey from './apiKey';
 import * as artifact from './artifact';
 import * as auth from './misc';
-// import * as auditLog from './auditLog';
 import * as chat from './chat';
-// import * as complianceLlm from './complianceLlm';
-// import * as member from './member';
 import * as ai from './ai';
-// import * as organization from './organization';
+import * as compliancePattern from './compliancePattern';
 import * as project from './project';
 import * as reference from './reference';
 import * as space from './space';
-// import * as stats from './stats';
-// import * as team from './team';
+import { isOperationAllowed } from '../modes';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
@@ -23,52 +18,43 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	const resource = this.getNodeParameter('resource', 0) as string;
 	const operation = this.getNodeParameter('operation', 0) as string;
 
+	let gatewayOnly = false;
+	try {
+		const credentials = await this.getCredentials('oneAiApi');
+		gatewayOnly = credentials.gatewayOnly === true;
+	} catch {
+		// If credentials can't be loaded, the request will fail downstream anyway
+	}
+
+	if (!isOperationAllowed(resource, operation, gatewayOnly)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			gatewayOnly
+				? `Operation "${operation}" on resource "${resource}" is not available in Gateway Only mode. Disable "Gateway Only" on the credential to use hub features.`
+				: `Unknown resource/operation: ${resource}/${operation}`,
+		);
+	}
+
 	for (let i = 0; i < items.length; i++) {
 		try {
 			let responseData: INodeExecutionData[] = [];
 
 			switch (resource) {
-				// case 'apiKey':
-				// 	switch (operation) {
-				// 		case 'create':
-				// 			responseData = await apiKey.create.execute.call(this, i);
-				// 			break;
-				// 		case 'delete':
-				// 			responseData = await apiKey.delete.execute.call(this, i);
-				// 			break;
-				// 		case 'get':
-				// 			responseData = await apiKey.get.execute.call(this, i);
-				// 			break;
-				// 		case 'getStatistics':
-				// 			responseData = await apiKey.getStatistics.execute.call(this);
-				// 			break;
-				// 		case 'list':
-				// 			responseData = await apiKey.list.execute.call(this, i);
-				// 			break;
-				// 		default:
-				// 			throw new NodeOperationError(
-				// 				this.getNode(),
-				// 				`Unknown operation: ${operation}`,
-				// 				{ itemIndex: i },
-				// 			);
-				// 	}
-				// 	break;
-
 				case 'miscellaneous':
-				switch (operation) {
-					case 'checkAuth':
-						responseData = await auth.checkAuth.execute.call(this, i);
-						break;
-					default:
-						throw new NodeOperationError(
-							this.getNode(),
-							`Unknown operation: ${operation}`,
-							{ itemIndex: i },
-						);
-				}
-				break;
+					switch (operation) {
+						case 'checkAuth':
+							responseData = await auth.checkAuth.execute.call(this, i);
+							break;
+						default:
+							throw new NodeOperationError(
+								this.getNode(),
+								`Unknown operation: ${operation}`,
+								{ itemIndex: i },
+							);
+					}
+					break;
 
-			case 'artifact':
+				case 'artifact':
 					switch (operation) {
 						case 'create':
 							responseData = await artifact.create.execute.call(this, i);
@@ -97,23 +83,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					}
 					break;
 
-				// case 'auditLog':
-				// 	switch (operation) {
-				// 		case 'get':
-				// 			responseData = await auditLog.get.execute.call(this, i);
-				// 			break;
-				// 		case 'list':
-				// 			responseData = await auditLog.list.execute.call(this, i);
-				// 			break;
-				// 		default:
-				// 			throw new NodeOperationError(
-				// 				this.getNode(),
-				// 				`Unknown operation: ${operation}`,
-				// 				{ itemIndex: i },
-				// 			);
-				// 	}
-				// 	break;
-
 				case 'chat':
 					switch (operation) {
 						case 'create':
@@ -125,7 +94,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						case 'get':
 							responseData = await chat.get.execute.call(this, i);
 							break;
-	case 'list':
+						case 'list':
 							responseData = await chat.list.execute.call(this, i);
 							break;
 						case 'update':
@@ -140,30 +109,22 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					}
 					break;
 
-				// case 'complianceLlm':
-				// 	switch (operation) {
-				// 		case 'getStatus':
-				// 			responseData = await complianceLlm.getStatus.execute.call(this);
-				// 			break;
-				// 		case 'updateSettings':
-				// 			responseData = await complianceLlm.updateSettings.execute.call(this, i);
-				// 			break;
-				// 		default:
-				// 			throw new NodeOperationError(
-				// 				this.getNode(),
-				// 				`Unknown operation: ${operation}`,
-				// 				{ itemIndex: i },
-				// 			);
-				// 	}
-				// 	break;
-
-				case 'ai':
+				case 'compliancePattern':
 					switch (operation) {
-						case 'createResponse':
-							responseData = await ai.createResponse.execute.call(this, i);
+						case 'create':
+							responseData = await compliancePattern.create.execute.call(this, i);
 							break;
-						case 'listModels':
-							responseData = await ai.listModels.execute.call(this);
+						case 'delete':
+							responseData = await compliancePattern.deletePattern.execute.call(this, i);
+							break;
+						case 'edit':
+							responseData = await compliancePattern.edit.execute.call(this, i);
+							break;
+						case 'list':
+							responseData = await compliancePattern.list.execute.call(this, i);
+							break;
+						case 'setEnabled':
+							responseData = await compliancePattern.setEnabled.execute.call(this, i);
 							break;
 						default:
 							throw new NodeOperationError(
@@ -174,57 +135,40 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					}
 					break;
 
-				// case 'member':
-				// 	switch (operation) {
-				// 		case 'create':
-				// 			responseData = await member.create.execute.call(this, i);
-				// 			break;
-				// 		case 'delete':
-				// 			responseData = await member.delete.execute.call(this, i);
-				// 			break;
-				// 		case 'getStatistics':
-				// 			responseData = await member.getStatistics.execute.call(this);
-				// 			break;
-				// 		case 'list':
-				// 			responseData = await member.list.execute.call(this, i);
-				// 			break;
-				// 		case 'resetRecovery':
-				// 			responseData = await member.resetRecovery.execute.call(this, i);
-				// 			break;
-				// 		case 'update':
-				// 			responseData = await member.update.execute.call(this, i);
-				// 			break;
-				// 		default:
-				// 			throw new NodeOperationError(
-				// 				this.getNode(),
-				// 				`Unknown operation: ${operation}`,
-				// 				{ itemIndex: i },
-				// 			);
-				// 	}
-				// 	break;
-
-				// case 'organization':
-				// 	switch (operation) {
-				// 		case 'getCurrent':
-				// 			responseData = await organization.getCurrent.execute.call(this);
-				// 			break;
-				// 		case 'getStatistics':
-				// 			responseData = await organization.getStatistics.execute.call(this);
-				// 			break;
-				// 		case 'update':
-				// 			responseData = await organization.update.execute.call(this, i);
-				// 			break;
-				// 		case 'updateCompliance':
-				// 			responseData = await organization.updateCompliance.execute.call(this, i);
-				// 			break;
-				// 		default:
-				// 			throw new NodeOperationError(
-				// 				this.getNode(),
-				// 				`Unknown operation: ${operation}`,
-				// 				{ itemIndex: i },
-				// 			);
-				// 	}
-				// 	break;
+				case 'ai':
+					switch (operation) {
+						case 'createEmbedding':
+							responseData = await ai.createEmbedding.execute.call(this, i);
+							break;
+						case 'createResponse':
+							responseData = await ai.createResponse.execute.call(this, i);
+							break;
+						case 'editImage':
+							responseData = await ai.editImage.execute.call(this, i);
+							break;
+						case 'generateImage':
+							responseData = await ai.generateImage.execute.call(this, i);
+							break;
+						case 'generateSpeech':
+							responseData = await ai.generateSpeech.execute.call(this, i);
+							break;
+						case 'listModels':
+							responseData = await ai.listModels.execute.call(this);
+							break;
+						case 'listImageModels':
+							responseData = await ai.listImageModels.execute.call(this);
+							break;
+						case 'transcribeAudio':
+							responseData = await ai.transcribeAudio.execute.call(this, i);
+							break;
+						default:
+							throw new NodeOperationError(
+								this.getNode(),
+								`Unknown operation: ${operation}`,
+								{ itemIndex: i },
+							);
+					}
+					break;
 
 				case 'project':
 					switch (operation) {
@@ -237,9 +181,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						case 'get':
 							responseData = await project.get.execute.call(this, i);
 							break;
-						// case 'getStatistics':
-						// 	responseData = await project.getStatistics.execute.call(this);
-						// 	break;
 						case 'list':
 							responseData = await project.list.execute.call(this, i);
 							break;
@@ -333,55 +274,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 							);
 					}
 					break;
-
-				// case 'stats':
-				// 	switch (operation) {
-				// 		case 'dashboard':
-				// 			responseData = await stats.dashboard.execute.call(this, i);
-				// 			break;
-				// 		case 'usage':
-				// 			responseData = await stats.usage.execute.call(this, i);
-				// 			break;
-				// 		default:
-				// 			throw new NodeOperationError(
-				// 				this.getNode(),
-				// 				`Unknown operation: ${operation}`,
-				// 				{ itemIndex: i },
-				// 			);
-				// 	}
-				// 	break;
-
-				// case 'team':
-				// 	switch (operation) {
-				// 		case 'addMember':
-				// 			responseData = await team.addMember.execute.call(this, i);
-				// 			break;
-				// 		case 'create':
-				// 			responseData = await team.create.execute.call(this, i);
-				// 			break;
-				// 		case 'delete':
-				// 			responseData = await team.delete.execute.call(this, i);
-				// 			break;
-				// 		case 'get':
-				// 			responseData = await team.get.execute.call(this, i);
-				// 			break;
-				// 		case 'list':
-				// 			responseData = await team.list.execute.call(this, i);
-				// 			break;
-				// 		case 'listMembers':
-				// 			responseData = await team.listMembers.execute.call(this, i);
-				// 			break;
-				// 		case 'removeMember':
-				// 			responseData = await team.removeMember.execute.call(this, i);
-				// 			break;
-				// 		default:
-				// 			throw new NodeOperationError(
-				// 				this.getNode(),
-				// 				`Unknown operation: ${operation}`,
-				// 				{ itemIndex: i },
-				// 			);
-				// 	}
-				// 	break;
 
 				default:
 					throw new NodeOperationError(this.getNode(), `Unknown resource: ${resource}`, {

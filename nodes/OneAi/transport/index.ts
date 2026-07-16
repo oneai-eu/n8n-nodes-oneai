@@ -51,6 +51,50 @@ export async function oneAiApiRequest(
 	}
 }
 
+/**
+ * Perform a request whose response body is binary (e.g. synthesized speech
+ * audio) rather than JSON. Returns the raw bytes as a Buffer. The request body,
+ * when present, is still sent as JSON.
+ */
+export async function oneAiApiRequestRaw(
+	this: IExecuteFunctions,
+	options: OneAiApiRequestOptions,
+): Promise<Buffer> {
+	const credentials = await this.getCredentials('oneAiApi');
+
+	const baseUrl = (credentials.url as string).replace(/\/$/, '');
+
+	const requestOptions: IHttpRequestOptions = {
+		method: options.method,
+		url: `${baseUrl}${options.endpoint}`,
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		// Force a binary response body. Pre-serialize the request body so the
+		// `json` flag (which would coerce the response back to JSON) is not needed.
+		encoding: 'arraybuffer',
+	};
+
+	if (options.body && Object.keys(options.body).length > 0) {
+		requestOptions.body = JSON.stringify(options.body);
+	}
+
+	if (options.qs && Object.keys(options.qs).length > 0) {
+		requestOptions.qs = options.qs;
+	}
+
+	try {
+		const response = await this.helpers.httpRequestWithAuthentication.call(
+			this,
+			'oneAiApi',
+			requestOptions,
+		);
+		return Buffer.from(response as ArrayBuffer);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
+
 export interface OneAiApiBinaryRequestOptions {
 	method: IHttpRequestMethods;
 	endpoint: string;

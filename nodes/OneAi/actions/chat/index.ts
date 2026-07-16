@@ -9,53 +9,9 @@ import * as update from './update.operation';
 export { create, del as delete, get, list, update };
 
 export const description: INodeProperties[] = [
-	{
-		displayName: 'Operation',
-		name: 'operation',
-		type: 'options',
-		noDataExpression: true,
-		displayOptions: {
-			show: {
-				resource: ['chat'],
-			},
-		},
-		options: [
-			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new chat',
-				action: 'Create a chat',
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a chat',
-				action: 'Delete a chat',
-			},
-			{
-				name: 'Get',
-				value: 'get',
-				description: 'Get chat history',
-				action: 'Get a chat',
-			},
-{
-				name: 'List',
-				value: 'list',
-				description: 'List chats with optional filtering',
-				action: 'List all chats',
-			},
-			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update chat details (rename or move)',
-				action: 'Update a chat',
-			},
-		],
-		default: 'list',
-	},
 	...create.description,
 	...del.description,
 	...get.description,
-...list.description,
+	...list.description,
 	...update.description,
 ];
