@@ -14,11 +14,19 @@ npm run lint            # n8n-node lint, n8n's own rule set
 npm run build           # n8n-node build
 npx tsc --noEmit        # strict, noImplicitAny
 node scripts/drift-check.mjs
-npx @n8n/scan-community-package     # 🔴 the gate verification depends on
+npx @n8n/scan-community-package @oneai-eu/n8n-nodes-oneai   # 🔴 see below
 ```
 
-🔴 The scanner runs a **newer rule set than local lint** and depends on publish provenance. It has
-**never been run** on this package. A clean local lint is not evidence about it.
+🔴 Three things about the scanner that will otherwise mislead you:
+
+- **It takes a package name, not a path**, and downloads that package **from npm**. Given a directory
+  it fails with `Cannot read properties of undefined (reading 'latest')`.
+- **So it cannot gate unpublished code.** It verifies what is already on the registry. Anything that
+  must be caught before a release is lint's job, the drift check's, or a test's — not its.
+- 🔴 **It exits 0 even when it fails.** A failing run prints `❌ Package … has failed security checks`
+  and returns status 0. Parse the output; never gate on the exit code.
+
+Baseline: `0.1.9` **passed all checks** on 2026-09-03, provenance included.
 
 ## The three-way check
 

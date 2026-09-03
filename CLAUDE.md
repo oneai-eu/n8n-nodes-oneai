@@ -193,9 +193,23 @@ node scripts/drift-check.mjs        # spec ↔ shipped surface, on shapes
 `node_modules`, and CI pins Node 22 where type-stripping a `.ts` entry point is not dependable. A
 checker that silently stops running is worth less than none.
 
-🔴 **`npx @n8n/scan-community-package` is the gate verification actually depends on**, it runs a
-*newer* rule set than local lint, and **we have never run it.** Run it before claiming a package is
-certification-ready.
+### 🔴 `@n8n/scan-community-package` — what it is, and three things that are not obvious
+
+Run 2026-09-03 for the first time. **`@oneai-eu/n8n-nodes-oneai@0.1.9` passes all security checks.**
+
+```
+npx @n8n/scan-community-package @oneai-eu/n8n-nodes-oneai
+```
+
+1. **It takes a package NAME, not a path.** Given a directory it fails with
+   `Cannot read properties of undefined (reading 'latest')` while calling the target `.@null`. It
+   downloads the package **from npm**, verifies its provenance against GitHub, and analyses that.
+2. **So it cannot gate local code.** It only ever examines something already published — it is a
+   post-publish verification, not a pre-release check. Anything that must be caught *before* a
+   release has to be caught by lint, the drift check or a test.
+3. 🔴 **Its exit code is 0 even when it fails.** The failing run above printed
+   `❌ Package … has failed security checks` and still exited **0**. A CI step gating on the exit
+   code would pass on failure. **Parse the output for `✅`/`❌`; never trust the status.**
 
 **There is no unit-test convention in n8n**, and n8n's own testing page amounts to "run it in a local
 n8n, and lint it". vitest is anticipated by the rule docs, so structural tests are permitted — and
