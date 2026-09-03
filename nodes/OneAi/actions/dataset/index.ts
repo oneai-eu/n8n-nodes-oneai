@@ -1,0 +1,17 @@
+import type { INodeProperties } from 'n8n-workflow';
+
+import * as create from './create.operation';
+import * as exportCsv from './exportCsv.operation';
+import * as importCsv from './importCsv.operation';
+import * as list from './list.operation';
+import * as updateSchema from './updateSchema.operation';
+
+export { create, exportCsv, importCsv, list, updateSchema };
+
+export const description: INodeProperties[] = [
+	...create.description,
+	...exportCsv.description,
+	...importCsv.description,
+	...list.description,
+	...updateSchema.description,
+];

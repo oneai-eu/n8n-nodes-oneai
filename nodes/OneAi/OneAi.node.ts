@@ -12,6 +12,8 @@ import * as artifact from './actions/artifact';
 import * as chat from './actions/chat';
 import * as ai from './actions/ai';
 import * as compliancePattern from './actions/compliancePattern';
+import * as dataset from './actions/dataset';
+import * as datasetRow from './actions/datasetRow';
 import * as checkAuth from './actions/misc';
 import * as project from './actions/project';
 import * as reference from './actions/reference';
@@ -47,6 +49,8 @@ export class OneAi implements INodeType {
 			...chat.description,
 			...ai.description,
 			...compliancePattern.description,
+			...dataset.description,
+			...datasetRow.description,
 			...project.description,
 			...reference.description,
 			...space.description,

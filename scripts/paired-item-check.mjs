@@ -73,6 +73,18 @@
  *       `.map((item, index) => …)` callback parameter, not to a `const` of the same name, not
  *       to a numeric literal.
  *
+ * A file may instead export `executeAll(this, items: INodeExecutionData[])`, the shape used by
+ * an operation that runs ONCE for the whole input (it is dispatched from an explicit arm before
+ * the router's item loop, so `.execute.call` never names it - see `dispatchedFiles`). Its one
+ * output row descends from every input item, so R1 and R3 are replaced by:
+ *
+ *   R1' `executeAll` takes the input items array.
+ *   R5  every `pairedItem` identifier is the INDEX (second) parameter of a `.map()` callback
+ *       whose receiver is that array. This is deliberately the mirror image of R3 rather than
+ *       an exemption from it: a callback index is the input item's index exactly when the thing
+ *       mapped over is the input items, and a `.map` over the response rows produces identical
+ *       source text and a fabricated lineage.
+ *
  * `actions/router.ts` is checked under its own rule: its `pairedItem` must name the loop
  * variable that walks `this.getInputData()`. It is the one place in the tree that was right,
  * and nothing should be allowed to make it wrong.
@@ -109,6 +121,49 @@ const VERBOSE = argv.includes('--verbose');
 // ---------------------------------------------------------------------------
 // Source scanning primitives - shared in spirit with drift-check.mjs
 // ---------------------------------------------------------------------------
+
+/**
+ * Does the `/` at `i` open a REGEX LITERAL rather than a division?
+ *
+ * 🔴 This exists because of a real failure, not for completeness. `drift-check.mjs` states that
+ * no regex literal in this tree begins with `/` followed by `/` or `*`, and treats every other
+ * `/` as ordinary text - which is fine until a regex CONTAINS A QUOTE. Stage 2's RFC-4180 CSV
+ * writer has `if (/["\r\n,]/.test(field))`, and that `"` put the scanner into string mode and
+ * desynchronised every bracket after it. The checker reported `5 unbalanced bracket(s)` and
+ * exited 2 - it failed closed, which is the vacuity guard working exactly as intended, but the
+ * scanner still has to be able to read the file.
+ *
+ * The discrimination is the standard one: a `/` starts a regex when the previous significant
+ * character cannot end an expression.
+ */
+function isRegexStart(src, i) {
+	let j = i - 1;
+	while (j >= 0 && /\s/.test(src[j])) j -= 1;
+	if (j < 0) return true;
+	const c = src[j];
+	if ('(,=:[!&|?{};+-*%^~<>'.includes(c)) return true;
+	// a keyword can be followed by a regex: `return /x/.test(s)`
+	let k = j;
+	while (k >= 0 && /[\w$]/.test(src[k])) k -= 1;
+	const word = src.slice(k + 1, j + 1);
+	return ['return', 'typeof', 'case', 'in', 'of', 'do', 'else', 'void', 'delete', 'instanceof', 'new', 'yield', 'await'].includes(word);
+}
+
+/** Index just past the regex literal starting at `i` (including flags), or -1. */
+function readRegex(src, i) {
+	let j = i + 1;
+	let inClass = false;
+	while (j < src.length) {
+		const c = src[j];
+		if (c === '\\') { j += 2; continue; }
+		if (c === '\n') return -1; // a regex literal cannot span lines - it was division
+		if (inClass) { if (c === ']') inClass = false; }
+		else if (c === '[') inClass = true;
+		else if (c === '/') { j += 1; while (j < src.length && /[a-z]/i.test(src[j])) j += 1; return j; }
+		j += 1;
+	}
+	return -1;
+}
 
 /**
  * Remove `//` and block comments while leaving string and template literals intact.
@@ -170,6 +225,11 @@ function stripComments(src) {
 			continue;
 		}
 
+		if (c === '/' && next !== '/' && next !== '*' && isRegexStart(src, i)) {
+			const end = readRegex(src, i);
+			if (end !== -1) { out += src.slice(i, end); i = end; continue; }
+		}
+
 		if (c === '/' && next === '/') {
 			while (i < n && src[i] !== '\n') i += 1;
 			continue;
@@ -229,6 +289,10 @@ function bracketMap(src) {
 		}
 		if (c === '{') braceDepth += 1;
 		else if (c === '}') braceDepth -= 1;
+		if (c === '/' && src[i + 1] !== '/' && src[i + 1] !== '*' && isRegexStart(src, i)) {
+			const end = readRegex(src, i);
+			if (end !== -1) { i = end - 1; continue; }
+		}
 		if (c === "'" || c === '"' || c === '`') {
 			quote = c;
 			continue;
@@ -488,31 +552,103 @@ function resolveBinding(scopes, name, pos) {
 	return null;
 }
 
-/** Every `pairedItem:` site in the file, with the text of its `item:` value. */
+/** The offset just past the value of a property, i.e. the next top-level `,` or closing bracket. */
+function propertyValueEnd(src, from) {
+	let depth = 0;
+	for (let i = from; i < src.length; i++) {
+		const c = src[i];
+		if (c === '(' || c === '[' || c === '{') depth += 1;
+		else if (c === ')' || c === ']' || c === '}') {
+			if (depth === 0) return i;
+			depth -= 1;
+		} else if (c === ',' && depth === 0) return i;
+	}
+	return src.length;
+}
+
+/**
+ * Every `pairedItem:` site in the file, with the text of its `item:` value.
+ *
+ * Two forms occur, and the second is why this is not one regex:
+ *
+ *     pairedItem: { item: index }                                 form 'object'
+ *     pairedItem: items.map((_, itemIndex) => ({ item: itemIndex }))   form 'expression'
+ *
+ * The array form is legal - `pairedItem?: IPairedItemData | IPairedItemData[] | number` in
+ * `n8n-workflow` - and it is the only honest lineage for an operation whose one output row
+ * descends from every input item. Before this file understood it, such a site was reported as
+ * "not followed by an object literal", which is an extractor error and exits 2. Silently
+ * skipping it instead would have been worse: the site would have vanished from the counts.
+ */
 function findPairedItemSites(src, brackets, problems) {
 	const sites = [];
 	const re = /\bpairedItem\s*:/g;
 	let m;
 	while ((m = re.exec(src)) !== null) {
-		const objOpen = skipSpaceForward(src, m.index + m[0].length);
-		if (src[objOpen] !== '{') {
-			problems.push(`\`pairedItem\` at offset ${m.index} is not followed by an object literal`);
+		const valueStart = skipSpaceForward(src, m.index + m[0].length);
+
+		if (src[valueStart] === '{') {
+			const objClose = brackets.open.get(valueStart);
+			if (objClose === undefined) {
+				problems.push(`unbalanced \`pairedItem\` object at offset ${valueStart}`);
+				continue;
+			}
+			const inner = src.slice(valueStart + 1, objClose);
+			const itemMatch = inner.match(/\bitem\s*:\s*([^,}]+)/);
+			sites.push({
+				at: m.index,
+				// where the identifier itself sits, which is the position scopes are resolved from
+				valueAt: itemMatch ? valueStart + 1 + itemMatch.index : m.index,
+				value: itemMatch ? itemMatch[1].trim() : null,
+				form: 'object',
+				raw: src.slice(m.index, objClose + 1).replace(/\s+/g, ' '),
+			});
 			continue;
 		}
-		const objClose = brackets.open.get(objOpen);
-		if (objClose === undefined) {
-			problems.push(`unbalanced \`pairedItem\` object at offset ${objOpen}`);
+
+		const end = propertyValueEnd(src, valueStart);
+		const expr = src.slice(valueStart, end);
+		const itemMatch = expr.match(/\bitem\s*:\s*([^,}]+)/);
+		if (!itemMatch) {
+			problems.push(
+				`\`pairedItem\` at offset ${m.index} is neither an object literal nor an expression containing an \`item:\` key ` +
+					`(saw ${JSON.stringify(expr.replace(/\s+/g, ' ').slice(0, 60))})`,
+			);
 			continue;
 		}
-		const inner = src.slice(objOpen + 1, objClose);
-		const itemMatch = inner.match(/\bitem\s*:\s*([^,}]+)/);
 		sites.push({
 			at: m.index,
-			value: itemMatch ? itemMatch[1].trim() : null,
-			raw: src.slice(m.index, objClose + 1).replace(/\s+/g, ' '),
+			valueAt: valueStart + itemMatch.index,
+			value: itemMatch[1].trim(),
+			form: 'expression',
+			expr: expr.replace(/\s+/g, ' '),
+			exprAt: valueStart,
+			raw: src.slice(m.index, end).replace(/\s+/g, ' '),
 		});
 	}
 	return sites;
+}
+
+/**
+ * For an arrow that is the argument of a `.map(…)`, the identifier the `.map` was called on.
+ * `items.map((_, itemIndex) => …)` -> `'items'`. Anything else -> `null`.
+ *
+ * This is what makes rule R5 a property rather than a token: an index from a callback is only
+ * the input item's index when the thing being mapped over IS the input items array. A `.map`
+ * over the API's response rows produces exactly the same source text and is exactly wrong.
+ */
+function mapReceiver(src, arrowScope) {
+	let j = skipSpaceBackward(src, arrowScope.paramsStart - 1);
+	if (src[j] !== '(') return null;
+	j = skipSpaceBackward(src, j - 1);
+	if (src.slice(j - 2, j + 1) !== 'map') return null;
+	j = skipSpaceBackward(src, j - 3);
+	if (src[j] !== '.') return null;
+	j = skipSpaceBackward(src, j - 1);
+	let k = j;
+	while (k >= 0 && /[\w$]/.test(src[k])) k -= 1;
+	const name = src.slice(k + 1, j + 1);
+	return IDENT_RE.test(name) && name !== '' ? name : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -532,6 +668,96 @@ function listOperationFiles() {
 }
 
 /**
+ * Every OTHER `.ts` under `actions/<resource>/` - `helpers.ts`, `providers.ts`, `index.ts`.
+ *
+ * 🔴 These exist in the checked set because of a hole found by mutation, not by design. An
+ * earlier version scanned only `*.operation.ts`. Moving the shadowing defect into a
+ * `helpers.ts`, while leaving one correct site behind in the operation file to satisfy R2,
+ * produced `tsc` 0, drift 0 and `RESULT: clean, exit 0` on genuinely wrong lineage - a
+ * confident green on a real defect, which is the exact failure this file exists to prevent.
+ * Stage 2 is the change that introduced helper files, so the hole opened in the same run.
+ */
+function listHelperFiles() {
+	const files = [];
+	for (const entry of readdirSync(ACTIONS_DIR, { withFileTypes: true })) {
+		if (!entry.isDirectory()) continue;
+		const dir = join(ACTIONS_DIR, entry.name);
+		for (const f of readdirSync(dir)) {
+			if (f.endsWith('.ts') && !f.endsWith('.operation.ts')) files.push(join(dir, f));
+		}
+	}
+	return files.sort();
+}
+
+/**
+ * R6 - lineage emitted from a file that is not an operation.
+ *
+ * A helper has no `execute`, so R1 and R2 do not apply: a helper that emits no `pairedItem` is
+ * simply not in the lineage business and is skipped. But if it DOES emit one, the identifier
+ * still has to be a real input-item index, which here means a parameter of a named `function`
+ * typed `number` - the shape a helper gets when the operation passes its own item index down.
+ * A `.map()` callback parameter, a local declaration or a literal all fail, which is what makes
+ * this a property and not a token.
+ */
+function checkHelperFile(filePath, problems) {
+	const rel = relative(ROOT, filePath);
+	const src = stripComments(readFileSync(filePath, 'utf8'));
+	const brackets = bracketMap(src);
+	if (brackets.unbalanced !== 0) {
+		problems.push(`${rel}: ${brackets.unbalanced} unbalanced bracket(s) - the parser cannot be trusted here`);
+		return null;
+	}
+
+	const sites = findPairedItemSites(src, brackets, problems);
+	if (sites.length === 0) return null; // not in the lineage business
+
+	const scopes = collectScopes(src, brackets, problems);
+	const findings = [];
+
+	for (const site of sites) {
+		const line = lineOf(src, site.at);
+		const identMatch = (site.value ?? '').match(/^([A-Za-z_$][\w$]*)$/);
+		if (!identMatch) {
+			findings.push({
+				rule: 'R6',
+				line,
+				message: `\`pairedItem\` names \`${site.value}\`, which is not a plain identifier, so it cannot be an input-item index`,
+			});
+			continue;
+		}
+		const name = identMatch[1];
+		const binding = resolveBinding(scopes, name, site.at);
+		if (binding === null) {
+			findings.push({
+				rule: 'R6',
+				line,
+				message: `\`pairedItem\` names \`${name}\`, which nothing in this file binds`,
+			});
+			continue;
+		}
+		const okShape =
+			binding.how === 'parameter' &&
+			binding.scope.kind === 'function' &&
+			(binding.param.type === null || binding.param.type === 'number');
+		if (okShape) continue;
+
+		const where =
+			binding.how === 'parameter'
+				? `a ${binding.scope.kind === 'arrow' ? 'callback' : 'function'} parameter introduced at line ${lineOf(src, binding.scope.paramsStart)}`
+				: `a local declaration at line ${lineOf(src, binding.at)}`;
+		findings.push({
+			rule: 'R6',
+			line,
+			message:
+				`\`pairedItem\` names \`${name}\`, which resolves to ${where} rather than to an item index passed into this helper ` +
+				'- the row is labelled with its position in the RESPONSE, not the input item it came from',
+		});
+	}
+
+	return { file: rel, findings, sites: sites.length };
+}
+
+/**
  * Which operations `router.ts` actually dispatches, so the report can split shipped from
  * parked. Comments are stripped first - that is what makes the 30 commented-out arms
  * disappear, and it is the whole reason this reads the router rather than the directory.
@@ -548,8 +774,12 @@ function dispatchedFiles() {
 	let m;
 	while ((m = importRe.exec(src)) !== null) aliases.set(m[1], m[2]);
 
+	// `.executeAll.call` is the once-per-execution dispatch shape used by an operation that runs
+	// over the whole input rather than one item at a time. It is dispatched from an explicit arm
+	// before the item loop, and matching only `.execute.call` here would have left such an
+	// operation's `pairedItem` unchecked while this tool reported a clean surface.
 	const called = new Set();
-	const re = /\bawait\s+([A-Za-z_$][\w$]*)\.([A-Za-z_$][\w$]*)\.execute\.call\b/g;
+	const re = /\bawait\s+([A-Za-z_$][\w$]*)\.([A-Za-z_$][\w$]*)\.execute(?:All)?\.call\b/g;
 	while ((m = re.exec(src)) !== null) {
 		called.add(`${aliases.get(m[1]) ?? m[1]}.${m[2]}`);
 	}
@@ -615,29 +845,47 @@ function checkOperationFile(filePath, problems) {
 
 	const scopes = collectScopes(src, brackets, problems);
 
-	const execMatch = src.match(/export\s+(?:async\s+)?function\s+execute\s*(?=\()/);
+	// Two entry-point shapes ship. `execute(this, index)` runs once per input item and names that
+	// item directly. `executeAll(this, items)` runs ONCE for the whole input - it cannot sit
+	// inside the router's item loop - and its one output row descends from every input item, so
+	// its lineage is an array built by mapping over the items array. Different shape, different
+	// rule; what does not change is that the identifier must resolve to something that really is
+	// an input-item index.
+	const execMatch = src.match(/export\s+(?:async\s+)?function\s+(execute|executeAll)\s*(?=\()/);
 	if (!execMatch) {
-		problems.push(`${rel}: no \`export async function execute(\` found`);
+		problems.push(`${rel}: no \`export async function execute(\` or \`executeAll(\` found`);
 		return null;
 	}
-	const execScope = scopes.find((s) => s.kind === 'function' && s.name === 'execute');
+	const execName = execMatch[1];
+	const execScope = scopes.find((s) => s.kind === 'function' && s.name === execName);
 	if (!execScope) {
-		problems.push(`${rel}: \`execute\` was found but its scope could not be resolved`);
+		problems.push(`${rel}: \`${execName}\` was found but its scope could not be resolved`);
 		return null;
 	}
+	const isAll = execName === 'executeAll';
 
 	const findings = [];
 	const itemParam = execScope.params[0] ?? null;
 
-	// R1 - execute must take an item-index parameter
+	// R1 - the entry point must take the parameter that lets it name input items at all
 	if (itemParam === null) {
 		findings.push({
 			rule: 'R1',
 			line: lineOf(src, execScope.paramsStart),
-			message:
-				'`execute` takes no item-index parameter, so nothing in this file can name the input item. ' +
-				'Add `index: number` after `this` and pass the router loop variable.',
+			message: isAll
+				? '`executeAll` takes no input-items parameter, so nothing in this file can name an input item. ' +
+					'Add `items: INodeExecutionData[]` after `this`.'
+				: '`execute` takes no item-index parameter, so nothing in this file can name the input item. ' +
+					'Add `index: number` after `this` and pass the router loop variable.',
 		});
+	} else if (isAll) {
+		if (itemParam.type !== null && !/^INodeExecutionData\s*\[\]$/.test(itemParam.type)) {
+			findings.push({
+				rule: 'R1',
+				line: lineOf(src, execScope.paramsStart),
+				message: `\`executeAll\`'s first parameter after \`this\` is \`${itemParam.text}\`, which is not the input items (expected \`INodeExecutionData[]\`)`,
+			});
+		}
 	} else if (itemParam.type !== null && itemParam.type !== 'number') {
 		findings.push({
 			rule: 'R1',
@@ -656,34 +904,72 @@ function checkOperationFile(filePath, problems) {
 		});
 	}
 
-	// R3 - every site must name the execute function's own item parameter
+	// R3 (`execute`) / R5 (`executeAll`) - every site must resolve to a real input-item index
+	const rule = isAll ? 'R5' : 'R3';
 	for (const site of sites) {
 		const line = lineOf(src, site.at);
 		if (site.value === null) {
-			findings.push({ rule: 'R3', line, message: `\`${site.raw}\` has no \`item:\` key` });
+			findings.push({ rule, line, message: `\`${site.raw}\` has no \`item:\` key` });
 			continue;
 		}
 		const identMatch = site.value.match(/^([A-Za-z_$][\w$]*)$/);
 		if (!identMatch) {
 			findings.push({
-				rule: 'R3',
+				rule,
 				line,
-				message: `\`pairedItem\` names \`${site.value}\`, which is not a plain identifier, so it cannot be the input item parameter`,
+				message: `\`pairedItem\` names \`${site.value}\`, which is not a plain identifier, so it cannot be an input item index`,
 			});
 			continue;
 		}
 		const name = identMatch[1];
 		if (itemParam === null) continue; // already reported by R1
 
-		const binding = resolveBinding(scopes, name, site.at);
+		const binding = resolveBinding(scopes, name, site.valueAt);
 		if (binding === null) {
 			findings.push({
-				rule: 'R3',
+				rule,
 				line,
 				message: `\`pairedItem\` names \`${name}\`, which nothing in this file binds`,
 			});
 			continue;
 		}
+
+		if (isAll) {
+			// R5 - the identifier must be the SECOND parameter (the index) of a `.map()` callback
+			// whose receiver is `executeAll`'s own items array. Then, and only then, is it an
+			// index into the input items. A `.map` over anything else - the response rows, a
+			// derived array - yields identical-looking source and a fabricated lineage.
+			if (binding.how !== 'parameter' || binding.scope.kind !== 'arrow') {
+				findings.push({
+					rule,
+					line,
+					message: `\`pairedItem\` names \`${name}\`, which is not a \`.map()\` callback parameter, so it cannot be an index into \`${itemParam.name}\``,
+				});
+				continue;
+			}
+			const receiver = mapReceiver(src, binding.scope);
+			if (receiver !== itemParam.name) {
+				findings.push({
+					rule,
+					line,
+					message:
+						`\`pairedItem\` names \`${name}\`, a callback parameter of \`.map()\` over ` +
+						`${receiver === null ? 'something that is not a `.map()` call' : `\`${receiver}\``} - ` +
+						`only an index into \`executeAll\`'s own \`${itemParam.name}\` names an input item`,
+				});
+				continue;
+			}
+			if (binding.scope.params.findIndex((p) => p.name === name) !== 1) {
+				findings.push({
+					rule,
+					line,
+					message: `\`pairedItem\` names \`${name}\`, which is not the index (second) parameter of the \`${itemParam.name}.map()\` callback`,
+				});
+				continue;
+			}
+			continue; // correct
+		}
+
 		if (binding.scope === execScope && binding.how === 'parameter' && binding.param.name === itemParam.name) {
 			continue; // correct
 		}
@@ -692,7 +978,7 @@ function checkOperationFile(filePath, problems) {
 				? `a ${binding.scope.kind === 'arrow' ? 'callback' : 'function'} parameter introduced at line ${lineOf(src, binding.scope.paramsStart)}`
 				: `a local declaration at line ${lineOf(src, binding.at)}`;
 		findings.push({
-			rule: 'R3',
+			rule,
 			line,
 			message:
 				`\`pairedItem\` names \`${name}\`, which resolves to ${where}, not to \`execute\`'s item parameter \`${itemParam.name}\` ` +
@@ -704,9 +990,19 @@ function checkOperationFile(filePath, problems) {
 }
 
 /**
- * `router.ts` gets its own rule: its `pairedItem` must name the variable that walks
- * `this.getInputData()`. It is the one place that was already right on 2026-09-03 and the
- * contrast is what makes the sweep safe.
+ * `router.ts` gets its own rule: its `pairedItem` must name a real input item. It is the one
+ * place that was already right on 2026-09-03 and the contrast is what makes the sweep safe.
+ *
+ * There are two legitimate sites now, and the second is why this resolves scopes instead of
+ * comparing the site's text to the loop variable's name:
+ *
+ *   - inside the item loop, the `continueOnFail` fallback must name the loop variable;
+ *   - in the pre-loop `executeAll` arm, whose operation runs once for the whole input, the
+ *     fallback names ALL of them via `items.map((_, inputItem) => ({ item: inputItem }))`.
+ *
+ * A token comparison would have passed the second site for the wrong reason the moment its
+ * callback parameter happened to be spelled `i` - the shadowing defect, reintroduced into the
+ * one file that never had it, and green.
  */
 function checkRouter(problems) {
 	const rel = relative(ROOT, ROUTER_FILE);
@@ -722,6 +1018,13 @@ function checkRouter(problems) {
 	}
 	const loopVar = loop[1];
 
+	const itemsMatch = src.match(/const\s+([A-Za-z_$][\w$]*)\s*=\s*this\.getInputData\(\)/);
+	if (!itemsMatch) {
+		problems.push(`${rel}: could not find \`const <items> = this.getInputData()\``);
+		return { file: rel, findings, sites: 0 };
+	}
+	const itemsVar = itemsMatch[1];
+
 	const sites = findPairedItemSites(src, brackets, problems);
 	if (sites.length === 0) {
 		findings.push({
@@ -731,13 +1034,49 @@ function checkRouter(problems) {
 		});
 	}
 	for (const site of sites) {
-		if (site.value !== loopVar) {
+		const line = lineOf(src, site.at);
+		const identMatch = (site.value ?? '').match(/^([A-Za-z_$][\w$]*)$/);
+		if (!identMatch) {
 			findings.push({
 				rule: 'R4',
-				line: lineOf(src, site.at),
-				message: `\`pairedItem\` names \`${site.value}\`, not the input-item loop variable \`${loopVar}\``,
+				line,
+				message: `\`pairedItem\` names \`${site.value}\`, which is not a plain identifier`,
 			});
+			continue;
 		}
+		const name = identMatch[1];
+		const binding = resolveBinding(scopes, name, site.valueAt);
+		if (binding === null) {
+			findings.push({
+				rule: 'R4',
+				line,
+				message: `\`pairedItem\` names \`${name}\`, which nothing in this file binds`,
+			});
+			continue;
+		}
+		// the loop variable itself, resolved rather than string-matched
+		if (binding.how === 'declaration' && name === loopVar) continue;
+		// a `.map()` over the input items array: its index parameter IS an input item index
+		if (binding.how === 'parameter' && binding.scope.kind === 'arrow') {
+			const receiver = mapReceiver(src, binding.scope);
+			if (receiver === itemsVar && binding.scope.params.findIndex((p) => p.name === name) === 1) {
+				continue;
+			}
+			findings.push({
+				rule: 'R4',
+				line,
+				message:
+					`\`pairedItem\` names \`${name}\`, a callback parameter of \`.map()\` over ` +
+					`${receiver === null ? 'something that is not a `.map()` call' : `\`${receiver}\``} - ` +
+					`only the loop variable \`${loopVar}\` or an index into \`${itemsVar}\` names an input item`,
+			});
+			continue;
+		}
+		findings.push({
+			rule: 'R4',
+			line,
+			message: `\`pairedItem\` names \`${name}\`, which is neither the input-item loop variable \`${loopVar}\` nor an index into \`${itemsVar}\``,
+		});
 	}
 	return { file: rel, findings, sites: sites.length };
 }
@@ -761,6 +1100,15 @@ function main() {
 	for (const f of files) {
 		const r = checkOperationFile(f, problems);
 		if (r) results.push({ ...r, dispatched: dispatchedPaths.has(f) });
+	}
+	const helpers = listHelperFiles();
+	let helpersWithLineage = 0;
+	for (const f of helpers) {
+		const r = checkHelperFile(f, problems);
+		if (r) {
+			helpersWithLineage += 1;
+			results.push({ ...r, dispatched: true });
+		}
 	}
 	results.push({ ...checkRouter(problems), dispatched: true });
 
@@ -809,6 +1157,9 @@ function main() {
 		console.log('='.repeat(72));
 		console.log(
 			`  scanned     ${files.length} operation file(s) (${dispatchedPaths.size} dispatched, ${files.length - dispatchedPaths.size} parked) + router.ts`,
+		);
+		console.log(
+			`  helpers     ${helpers.length} non-operation file(s) under actions/, ${helpersWithLineage} of them emitting \`pairedItem\``,
 		);
 		console.log(`  sites       ${totalSites} \`pairedItem\` expression(s) resolved against their scopes`);
 		console.log('');

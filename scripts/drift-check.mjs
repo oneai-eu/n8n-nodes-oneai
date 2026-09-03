@@ -330,6 +330,38 @@ function readRouterSurface() {
 			});
 		}
 	}
+
+	// ---- the pre-loop `executeAll` arms ------------------------------------
+	//
+	// Not every dispatched operation sits in the `switch`. An operation that runs ONCE for the
+	// whole input rather than once per item cannot live inside the item loop, so it is dispatched
+	// from an explicit `if` placed before it:
+	//
+	//     if (resource === 'datasetRow' && operation === 'appendMany') {
+	//         return [await datasetRow.appendMany.executeAll.call(this, items)];
+	//     }
+	//
+	// This reader matched only `.execute.call`, so such an arm was invisible: its API call was
+	// never compared against the spec while this tool printed a confident, clean table. That is
+	// the exact failure class this file exists to prevent, so the shape is read here explicitly -
+	// and, like everything else, only after comments have been stripped.
+	const allRe =
+		/resource\s*===\s*'([\w-]+)'\s*&&\s*operation\s*===\s*'([\w-]+)'[\s\S]{0,400}?await\s+(\w+)\.(\w+)\.executeAll\b/g;
+	let am;
+	while ((am = allRe.exec(src))) {
+		const [, resource, operation, alias, exportName] = am;
+		if (operations.some((o) => o.resource === resource && o.operation === operation)) continue;
+		if (!resources.includes(resource)) resources.push(resource);
+		operations.push({
+			resource,
+			operation,
+			alias,
+			exportName,
+			dir: aliasToDir.get(alias) ?? null,
+			dispatch: 'executeAll',
+		});
+	}
+
 	return { resources, operations, aliasToDir };
 }
 
@@ -705,7 +737,9 @@ function extractRequests(filePath) {
 	const src = stripComments(raw);
 
 	// Scope the search to the executed body; the `description` array above it never calls the API.
-	const execIdx = src.search(/export\s+(?:async\s+)?function\s+execute\b/);
+	// `executeAll` is the once-per-execution shape (see `readRouterSurface`); without it here the
+	// scope would silently fall back to the whole file.
+	const execIdx = src.search(/export\s+(?:async\s+)?function\s+execute(?:All)?\b/);
 	const scope = execIdx === -1 ? src : src.slice(execIdx);
 	const types = buildTypeMap(scope);
 

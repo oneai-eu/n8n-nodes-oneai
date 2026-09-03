@@ -6,6 +6,8 @@ import * as auth from './misc';
 import * as chat from './chat';
 import * as ai from './ai';
 import * as compliancePattern from './compliancePattern';
+import * as dataset from './dataset';
+import * as datasetRow from './datasetRow';
 import * as project from './project';
 import * as reference from './reference';
 import * as space from './space';
@@ -49,6 +51,31 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				? `Operation "${operation}" on resource "${resource}" is not available in Gateway Only mode. Disable "Gateway Only" on the credential to use hub features.`
 				: `Unknown resource/operation: ${resource}/${operation}`,
 		);
+	}
+
+	// `datasetRow:appendMany` is the one operation that runs ONCE for the whole input rather than
+	// once per item: it builds a single CSV from every item and sends one `import-csv` request, so
+	// it cannot sit inside the loop below. The arm is written out explicitly rather than
+	// duck-typed on `'executeAll' in module`, because router.ts is the authority on the shipped
+	// surface and both structural checkers parse it - an operation dispatched by a shape they
+	// cannot read would be invisible to them while they printed a clean table.
+	if (resource === 'datasetRow' && operation === 'appendMany') {
+		try {
+			return [await datasetRow.appendMany.executeAll.call(this, items)];
+		} catch (error) {
+			if (this.continueOnFail()) {
+				// The import is one atomic transaction, so the failure belongs to every input item.
+				return [
+					[
+						{
+							json: { error: (error as Error).message },
+							pairedItem: items.map((_, inputItem) => ({ item: inputItem })),
+						},
+					],
+				];
+			}
+			throw new NodeApiError(this.getNode(), error as JsonObject);
+		}
 	}
 
 	for (let i = 0; i < items.length; i++) {
@@ -142,6 +169,56 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						case 'setEnabled':
 							responseData = await compliancePattern.setEnabled.execute.call(this, i);
 							break;
+						default:
+							throw new NodeOperationError(
+								this.getNode(),
+								`Unknown operation: ${operation}`,
+								{ itemIndex: i },
+							);
+					}
+					break;
+
+				case 'dataset':
+					switch (operation) {
+						case 'create':
+							responseData = await dataset.create.execute.call(this, i);
+							break;
+						case 'exportCsv':
+							responseData = await dataset.exportCsv.execute.call(this, i);
+							break;
+						case 'importCsv':
+							responseData = await dataset.importCsv.execute.call(this, i);
+							break;
+						case 'list':
+							responseData = await dataset.list.execute.call(this, i);
+							break;
+						case 'updateSchema':
+							responseData = await dataset.updateSchema.execute.call(this, i);
+							break;
+						default:
+							throw new NodeOperationError(
+								this.getNode(),
+								`Unknown operation: ${operation}`,
+								{ itemIndex: i },
+							);
+					}
+					break;
+
+				case 'datasetRow':
+					switch (operation) {
+						case 'append':
+							responseData = await datasetRow.append.execute.call(this, i);
+							break;
+						case 'delete':
+							responseData = await datasetRow.delete.execute.call(this, i);
+							break;
+						case 'list':
+							responseData = await datasetRow.list.execute.call(this, i);
+							break;
+						case 'update':
+							responseData = await datasetRow.update.execute.call(this, i);
+							break;
+						// `appendMany` is handled before this loop - it runs once for all items.
 						default:
 							throw new NodeOperationError(
 								this.getNode(),
