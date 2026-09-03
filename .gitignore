@@ -4,3 +4,7 @@
 /pnpm-lock.yaml
 /dist
 /_docs
+# Local agent substrate — machine-specific, never published
+.claude/settings.local.json
+.claude/hooks/
+docs/orchestration/*/
