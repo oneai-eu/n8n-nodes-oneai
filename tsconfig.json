@@ -18,10 +18,15 @@
 		"noUnusedLocals": true,
 		"strictNullChecks": true,
 		"preserveConstEnums": true,
-		"incremental": true,
-		// Keep the incremental build cache out of `outDir`: `files: ["dist"]` in package.json
-		// means everything under dist/ is published, and dist/tsconfig.tsbuildinfo shipped in 0.1.9.
-		"tsBuildInfoFile": "./.tsbuildinfo",
+		// `incremental` is deliberately OFF. It was on, which put `tsconfig.tsbuildinfo` inside
+		// `outDir` - and `files: ["dist"]` meant that build cache shipped to npm in 0.1.9.
+		// Moving the cache out of `dist` instead is worse: `n8n-node build` cleans `dist`, but a
+		// surviving `.tsbuildinfo` convinces tsc everything is already emitted, so the build
+		// prints "Build successful" and produces NO JavaScript at all. `prepublishOnly`
+		// (`build && lint`) is the only gate on the publish path and it passes on that empty
+		// artefact. A full rebuild of a package this size costs a few seconds; a silently empty
+		// `dist/` costs a broken release.
+		"incremental": false,
 		"sourceMap": true,
 		"outDir": "./dist"
 	},

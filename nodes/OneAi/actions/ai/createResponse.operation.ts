@@ -237,9 +237,9 @@ export async function execute(
 			method: 'GET',
 			endpoint: '/api/auth/check',
 		});
+		// `personalProject` really is what `POST /api/chats` wants in `spaceId`: a chat can
+		// only be created in a project, and a project is a space whose provider is `project`.
 		const personalProject = authResponse.personalProject as string;
-		this.logger.info(personalProject)
-		
 		if (!personalProject) {
 			throw new NodeOperationError(
 				this.getNode(),
@@ -254,7 +254,6 @@ export async function execute(
 			body: { spaceId: personalProject, name: chatName, origin: 'n8n' },
 		});
 		chatId = chatResponse.chatId as string;
-		this.logger.info(chatId)
 	}
 
 	const chatOptions = this.getNodeParameter('chatOptions', index, {}) as {

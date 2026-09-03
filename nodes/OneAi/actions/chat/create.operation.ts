@@ -14,7 +14,8 @@ export const description: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the space to create the chat in',
+		description:
+			'The ID of the space to create the chat in. It must be a project - a space whose provider is "Project". An ordinary space is rejected with "Chats can only be created in projects."',
 		displayOptions: {
 			show: {
 				resource: ['chat'],

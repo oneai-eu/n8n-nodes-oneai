@@ -1,5 +1,17 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { oneAiApiRequest } from '../../transport';
+import { oneAiApiRequestRaw } from '../../transport';
+
+/**
+ * `GET /api/spaces/{spaceId}/files/download` responds `application/octet-stream`, and this
+ * operation used to read it through the JSON helper and hand the result to
+ * `returnJsonArray` - the same defect `artifact.exportPdf` had.
+ *
+ * No drift tier can see this one. Tier 1 passes because the path still resolves and tier 3
+ * passes because there is no request body to compare; it is a RESPONSE-shape defect, which
+ * `docs/DRIFT-2026-09-03.md` names as the checker's largest blind spot. It was found by
+ * sweeping every dispatched call for a mismatch between the spec's declared 200 content type
+ * and the transport helper used - one mismatch in 57 calls, and this was it.
+ */
 
 export const description: INodeProperties[] = [
 	{
@@ -23,6 +35,20 @@ export const description: INodeProperties[] = [
 		required: true,
 		default: '',
 		description: 'The path of the file to download',
+		displayOptions: {
+			show: {
+				resource: ['space'],
+				operation: ['downloadFile'],
+			},
+		},
+	},
+	{
+		displayName: 'Put Output File in Field',
+		name: 'binaryPropertyName',
+		type: 'string',
+		default: 'data',
+		required: true,
+		description: 'The binary property name to write the downloaded file to',
 		displayOptions: {
 			show: {
 				resource: ['space'],
@@ -60,6 +86,7 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const spaceId = this.getNodeParameter('spaceId', index) as string;
 	const path = this.getNodeParameter('path', index) as string;
+	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index) as string;
 	const options = this.getNodeParameter('options', index) as {
 		convert?: boolean;
 	};
@@ -75,14 +102,20 @@ export async function execute(
 		qs.convert = options.convert;
 	}
 
-	const response = await oneAiApiRequest.call(this, {
+	const file = await oneAiApiRequestRaw.call(this, {
 		method: 'GET',
 		endpoint: `/api/spaces/${spaceId}/files/download`,
 		qs,
 	});
 
-	return this.helpers.returnJsonArray(response).map((item) => ({
-		...item,
-		pairedItem: { item: index },
-	}));
+	const fileName = path.split('/').pop() || 'download';
+	const binaryData = await this.helpers.prepareBinaryData(file, fileName);
+
+	return [
+		{
+			json: { spaceId, path, fileName },
+			binary: { [binaryPropertyName]: binaryData },
+			pairedItem: { item: index },
+		},
+	];
 }
