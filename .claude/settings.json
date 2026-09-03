@@ -1,0 +1,52 @@
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Read",
+      "Edit",
+      "MultiEdit",
+      "Write",
+      "Glob",
+      "Grep",
+      "LS",
+      "Agent",
+      "Task",
+      "TaskStop",
+      "TaskOutput",
+      "WebFetch",
+      "WebSearch",
+      "Monitor",
+      "SendMessage",
+      "ListAgents",
+      "Skill",
+      "ToolSearch",
+      "NotebookEdit"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/root/n8n-nodes-oneai/.claude/hooks/auto-approve-bash.sh",
+            "timeout": 60,
+            "statusMessage": "Checking n8n-node command policy\u2026"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/root/n8n-nodes-oneai/.claude/hooks/auto-approve-write.sh",
+            "timeout": 60,
+            "statusMessage": "Checking n8n-node write policy\u2026"
+          }
+        ]
+      }
+    ]
+  }
+}
