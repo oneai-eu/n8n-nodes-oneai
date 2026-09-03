@@ -8,3 +8,4 @@
 .claude/settings.local.json
 .claude/hooks/
 docs/orchestration/*/
+/.tsbuildinfo

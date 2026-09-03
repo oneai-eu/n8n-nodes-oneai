@@ -29,7 +29,7 @@ export async function execute(
 		endpoint: `/api/teams/${teamId}`,
 	});
 
-	return this.helpers.returnJsonArray({ success: true }).map((item, index) => ({
+	return this.helpers.returnJsonArray({ success: true }).map((item) => ({
 		...item,
 		pairedItem: { item: index },
 	}));

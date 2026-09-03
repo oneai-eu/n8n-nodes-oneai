@@ -98,7 +98,7 @@ export const OPERATIONS: Record<string, OperationDefinition[]> = {
 		{ name: 'Delete', value: 'delete', description: 'Delete a chat', action: 'Delete a chat', gateway: false },
 		{ name: 'Get', value: 'get', description: 'Get chat history', action: 'Get a chat', gateway: false },
 		{ name: 'List', value: 'list', description: 'List chats with optional filtering', action: 'List all chats', gateway: false },
-		{ name: 'Update', value: 'update', description: 'Update chat details (rename or move)', action: 'Update a chat', gateway: false },
+		{ name: 'Update', value: 'update', description: 'Update chat details (rename, switch branch, or set persona/agent)', action: 'Update a chat', gateway: false },
 	],
 	compliancePattern: [
 		{ name: 'Create', value: 'create', description: 'Create a custom compliance pattern', action: 'Create a compliance pattern', gateway: false },
@@ -110,9 +110,12 @@ export const OPERATIONS: Record<string, OperationDefinition[]> = {
 	miscellaneous: [
 		{ name: 'Check Authentication', value: 'checkAuth', description: 'Check the authenticated user and return their details', action: 'Check authenticated user', gateway: true },
 	],
+	// `Create` and `Delete` were removed: OneAI no longer serves `POST /api/projects` or
+	// `DELETE /api/projects/{projectId}`. Projects are now created from a template
+	// (`POST /api/projects/templates/{templateId}/instantiate`) and retired by archiving them
+	// (`POST /api/projects/bulk`). Neither is a drop-in replacement, so neither is guessed at
+	// here - see the pull request for the proposal to add them as their own operations.
 	project: [
-		{ name: 'Create', value: 'create', description: 'Create a new project', action: 'Create a project', gateway: false },
-		{ name: 'Delete', value: 'delete', description: 'Delete a project', action: 'Delete a project', gateway: false },
 		{ name: 'Get', value: 'get', description: 'Get a project by ID', action: 'Get a project', gateway: false },
 		{ name: 'List', value: 'list', description: 'List all projects', action: 'List all projects', gateway: false },
 		{ name: 'Update', value: 'update', description: 'Update a project', action: 'Update a project', gateway: false },

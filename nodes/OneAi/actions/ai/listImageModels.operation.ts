@@ -3,13 +3,16 @@ import { oneAiApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [];
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
+export async function execute(
+	this: IExecuteFunctions,
+	index: number,
+): Promise<INodeExecutionData[]> {
 	const response = await oneAiApiRequest.call(this, {
 		method: 'GET',
 		endpoint: '/api/image-models',
 	});
 
-	return this.helpers.returnJsonArray(response).map((item, index) => ({
+	return this.helpers.returnJsonArray(response).map((item) => ({
 		...item,
 		pairedItem: { item: index },
 	}));

@@ -1,5 +1,6 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { oneAiApiRequest, oneAiApiRequestAllItems } from '../../transport';
+import { PROVIDER_OPTIONS, resolveProvider } from './providers';
 
 export const description: INodeProperties[] = [
 	{
@@ -58,32 +59,7 @@ export const description: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description: 'Filter by storage provider',
-				options: [
-					{
-						name: 'All',
-						value: '',
-					},
-					{
-						name: 'GitHub',
-						value: 'github',
-					},
-					{
-						name: 'Google Drive',
-						value: 'google',
-					},
-					{
-						name: 'Local',
-						value: 'local',
-					},
-					{
-						name: 'OneDrive',
-						value: 'onedrive',
-					},
-					{
-						name: 'SharePoint',
-						value: 'sharepoint',
-					},
-				],
+				options: [{ name: 'All', value: '' }, ...PROVIDER_OPTIONS],
 			},
 		],
 	},
@@ -110,7 +86,7 @@ export async function execute(
 		qs.search = filters.search;
 	}
 	if (filters.provider) {
-		qs.provider = filters.provider;
+		qs.provider = resolveProvider(filters.provider);
 	}
 
 	if (returnAll) {
@@ -120,7 +96,7 @@ export async function execute(
 			qs,
 			itemsKey: 'spaces',
 		});
-		return this.helpers.returnJsonArray(spaces).map((item, index) => ({
+		return this.helpers.returnJsonArray(spaces).map((item) => ({
 			...item,
 			pairedItem: { item: index },
 		}));
@@ -137,7 +113,7 @@ export async function execute(
 	});
 
 	const spaces = (response.spaces as IDataObject[]) || [];
-	return this.helpers.returnJsonArray(spaces).map((item, index) => ({
+	return this.helpers.returnJsonArray(spaces).map((item) => ({
 		...item,
 		pairedItem: { item: index },
 	}));

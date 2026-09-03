@@ -19,6 +19,9 @@
 		"strictNullChecks": true,
 		"preserveConstEnums": true,
 		"incremental": true,
+		// Keep the incremental build cache out of `outDir`: `files: ["dist"]` in package.json
+		// means everything under dist/ is published, and dist/tsconfig.tsbuildinfo shipped in 0.1.9.
+		"tsBuildInfoFile": "./.tsbuildinfo",
 		"sourceMap": true,
 		"outDir": "./dist"
 	},

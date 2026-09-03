@@ -32,7 +32,7 @@ export async function execute(
 		},
 	});
 
-	return this.helpers.returnJsonArray(response).map((item, index) => ({
+	return this.helpers.returnJsonArray(response).map((item) => ({
 		...item,
 		pairedItem: { item: index },
 	}));

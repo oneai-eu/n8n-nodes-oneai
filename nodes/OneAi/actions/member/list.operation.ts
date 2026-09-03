@@ -82,7 +82,7 @@ export async function execute(
 			qs,
 			itemsKey: 'members',
 		});
-		return this.helpers.returnJsonArray(members).map((item, index) => ({
+		return this.helpers.returnJsonArray(members).map((item) => ({
 			...item,
 			pairedItem: { item: index },
 		}));
@@ -99,7 +99,7 @@ export async function execute(
 	});
 
 	const members = (response.members as IDataObject[]) || [];
-	return this.helpers.returnJsonArray(members).map((item, index) => ({
+	return this.helpers.returnJsonArray(members).map((item) => ({
 		...item,
 		pairedItem: { item: index },
 	}));

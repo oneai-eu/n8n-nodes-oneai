@@ -29,7 +29,7 @@ export async function execute(
 		endpoint: `/api/members/${userId}/reset`,
 	});
 
-	return this.helpers.returnJsonArray(response).map((item, index) => ({
+	return this.helpers.returnJsonArray(response).map((item) => ({
 		...item,
 		pairedItem: { item: index },
 	}));

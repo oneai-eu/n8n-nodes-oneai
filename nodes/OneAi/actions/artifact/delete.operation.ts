@@ -44,7 +44,7 @@ export async function execute(
 		endpoint: `/api/spaces/${spaceId}/artifacts/${artifactId}`,
 	});
 
-	return this.helpers.returnJsonArray(response).map((item, index) => ({
+	return this.helpers.returnJsonArray(response).map((item) => ({
 		...item,
 		pairedItem: { item: index },
 	}));

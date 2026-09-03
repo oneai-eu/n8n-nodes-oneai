@@ -153,10 +153,10 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 							responseData = await ai.generateSpeech.execute.call(this, i);
 							break;
 						case 'listModels':
-							responseData = await ai.listModels.execute.call(this);
+							responseData = await ai.listModels.execute.call(this, i);
 							break;
 						case 'listImageModels':
-							responseData = await ai.listImageModels.execute.call(this);
+							responseData = await ai.listImageModels.execute.call(this, i);
 							break;
 						case 'transcribeAudio':
 							responseData = await ai.transcribeAudio.execute.call(this, i);
@@ -172,12 +172,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 				case 'project':
 					switch (operation) {
-						case 'create':
-							responseData = await project.create.execute.call(this, i);
-							break;
-						case 'delete':
-							responseData = await project.delete.execute.call(this, i);
-							break;
 						case 'get':
 							responseData = await project.get.execute.call(this, i);
 							break;

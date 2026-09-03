@@ -99,9 +99,9 @@ export async function execute(
 			itemsKey: 'patterns',
 			paginationKey: 'pagination',
 		});
-		return this.helpers.returnJsonArray(patterns).map((item, i) => ({
+		return this.helpers.returnJsonArray(patterns).map((item) => ({
 			...item,
-			pairedItem: { item: i },
+			pairedItem: { item: index },
 		}));
 	}
 
@@ -116,8 +116,8 @@ export async function execute(
 	});
 
 	const patterns = (response.patterns as IDataObject[]) || [];
-	return this.helpers.returnJsonArray(patterns).map((item, i) => ({
+	return this.helpers.returnJsonArray(patterns).map((item) => ({
 		...item,
-		pairedItem: { item: i },
+		pairedItem: { item: index },
 	}));
 }
