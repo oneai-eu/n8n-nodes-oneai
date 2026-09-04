@@ -17,7 +17,7 @@ import * as project from './actions/project';
 import * as reference from './actions/reference';
 import { router } from './actions/router';
 import * as space from './actions/space';
-import { filterOperations, filterResources } from './modes';
+import { operationProperties, resourceProperty } from './modes';
 
 export class OneAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -40,31 +40,8 @@ export class OneAi implements INodeType {
 			},
 		],
 		properties: [
-			{
-				displayName: 'Resource Name or ID',
-				name: 'resource',
-				type: 'options',
-				noDataExpression: true,
-				typeOptions: {
-					loadOptionsMethod: 'getResources',
-				},
-				default: 'ai',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-			},
-			{
-				displayName: 'Operation Name or ID',
-				name: 'operation',
-				type: 'options',
-				noDataExpression: true,
-				typeOptions: {
-					loadOptionsMethod: 'getOperations',
-					loadOptionsDependsOn: ['resource'],
-				},
-				default: 'createResponse',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-			},
+			resourceProperty,
+			...operationProperties,
 			...artifact.description,
 			...checkAuth.description,
 			...chat.description,
@@ -79,28 +56,6 @@ export class OneAi implements INodeType {
 
 	methods = {
 		loadOptions: {
-			async getResources(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				let gatewayOnly = false;
-				try {
-					const credentials = await this.getCredentials('oneAiApi');
-					gatewayOnly = credentials.gatewayOnly === true;
-				} catch {
-					// No credentials yet — show everything so first-time setup works
-				}
-				return filterResources(gatewayOnly);
-			},
-			async getOperations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const resource = this.getCurrentNodeParameter('resource') as string;
-				if (!resource) return [];
-				let gatewayOnly = false;
-				try {
-					const credentials = await this.getCredentials('oneAiApi');
-					gatewayOnly = credentials.gatewayOnly === true;
-				} catch {
-					// No credentials yet — show everything
-				}
-				return filterOperations(resource, gatewayOnly);
-			},
 			async getModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				try {
 					const credentials = await this.getCredentials('oneAiApi');
