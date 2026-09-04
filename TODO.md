@@ -31,6 +31,29 @@ renders, its credential is selectable and it executes from the interface, not on
 
 ## ▶ Needs the owner — blocking nothing, but nobody else can rule
 
+- 🔴 **OWNER-6 · The node cannot be found in the nodes panel, and this shipped in `0.1.9`.**
+  Confirmed by the owner searching "oneai" on the bench and finding nothing, with the mechanism
+  established: n8n's node creator is **action-first**, and it builds a node's actions from the
+  **static `options` arrays** of `resource` and `operation`. `0.1.9` moved both to `loadOptions`, so
+  the node now produces **zero actions** and is not surfaced by search at all. Measured on the
+  bench: oneAI has 0 static options and 0 action strings; Slack has 7/17 options and 7; even the
+  minimal shipped Perplexity node has 1/1 and 4. `npm pack @oneai-eu/n8n-nodes-oneai@0.1.8` confirms
+  the previous release had static options and **no** `loadOptionsMethod` at all.
+
+  **This is live on npm now** — every instance that upgraded to `0.1.9` has a node its users cannot
+  find, which for a published package is close to the worst available failure. It is not caused by
+  either open pull request; both inherit it.
+
+  **Recommended fix, and it is cheap:** generate the `resource` / `operation` `options` arrays
+  statically from `modes.ts` (the same source `filterResources` / `filterOperations` already use) and
+  give each operation its `action` string. 🟢 **Safe on `typeVersion: 1`** — the values are
+  identical, so nothing is renamed and no saved workflow changes meaning.
+
+  **The trade-off is yours to rule:** static options cannot be filtered by the credential, so a
+  Gateway-only user would see hub operations in the dropdown and meet the router's existing
+  `NodeOperationError` if they pick one. That is what `loadOptions` was bought for. Weigh a worse
+  dropdown for Gateway users against an invisible node for everyone.
+
 - **OWNER-1 · Merge order for #2 and #3.** #3 is stacked on #2 and carries the documentation for
   **both**. 🔴 Do not cut a release from #2 alone: its README still lists the `Project > Create` and
   `Project > Delete` operations that same PR removes. Either take both, or ask for the documentation
@@ -63,10 +86,7 @@ renders, its credential is selectable and it executes from the interface, not on
 - **BL-2 · Trace the six untraced dataset operations** — `updateSchema`, `importCsv`, `exportCsv`,
   `update`, `delete`, and the `defineBelow`/`json` data modes — plus `continueOnFail` on both the
   item loop and the `appendMany` arm. *(P2)*
-- **BL-3 · The nodes panel is unproven** — *now openable: the node is deployed on the bench, so this
-  needs a browser and five minutes rather than a rig.* Whether the operations appear as *actions* after the
-  0.1.9 `loadOptions` move needs a browser against a running n8n. Ten new operations make the answer
-  more consequential, not less. *(P2)*
+- ✅ **BL-3 · CLOSED 2026-09-04 — and the answer is bad.** See OWNER-6.
 - **BL-4 · Generate types from `openapi/openapi.json`,** the way the platform generates
   `src/openapi.gen.ts`. Until then "follow the spec's types" is a habit a reviewer must police
   rather than something the compiler enforces. *(P2)*
@@ -102,7 +122,7 @@ renders, its credential is selectable and it executes from the interface, not on
 - ✅ **13 drift failures + 2 warnings** across `chat`, `space`, `project` and `artifact` — 0.
   Session 0001, PR #2.
 - ✅ **OneData datasets** — ten operations across `dataset` and `datasetRow`. Session 0001, PR #3.
-  *Carried forward:* BL-2, BL-3, BL-5.
+  *Carried forward:* BL-2, BL-5, and OWNER-6 (BL-3 closed with a defect, not a clean answer).
 - ✅ **`dist/tsconfig.tsbuildinfo` shipped to npm** — and the first fix for it made the build emit
   no JavaScript at all while reporting success. `incremental` is now off and must stay off.
   Session 0001, PR #2.

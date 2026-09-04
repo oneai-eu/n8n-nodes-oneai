@@ -23,6 +23,24 @@
 > - **`TODO.md` and `SESSION-HISTORY.md` introduced**, tracked, following the oneglue convention,
 >   with `node-docs` owning them every run. Owner's framing, and it is the right one: `CLAUDE.md`
 >   holds what is always true; state and history belong elsewhere.
+> - 🔴 **U-7 is answered, and the answer is a shipped defect: the node is unfindable in the nodes
+>   panel.** The owner searched "oneai" in the panel and got nothing. The mechanism was then
+>   established rather than guessed: n8n's node creator is **action-first** and builds a node's
+>   actions from the **static `options` arrays** on `resource` and `operation`. `0.1.9` moved both
+>   to `loadOptions`, so the node yields **zero actions** and search does not surface it.
+>
+>   Measured on the bench: oneAI 0 static options / 0 action strings; Slack 7 and 17 options / 7
+>   actions; Perplexity — the minimal shipped node the codex was modelled on — 1 and 1 / 4. Two
+>   earlier hypotheses were checked and discarded first: `Data & Storage` is a real category (74
+>   nodes use it), and lacking `subcategories` cannot be the cause because Perplexity lacks them
+>   too. `npm pack @oneai-eu/n8n-nodes-oneai@0.1.8` settled the provenance: the previous release had
+>   static options and **no `loadOptionsMethod` anywhere**.
+>
+>   So this is a regression **in the published package**, not in either branch — and the research
+>   document had flagged it as open question U-7 while the node shipped anyway. The fix is cheap and
+>   safe on `typeVersion: 1` (generate the options from `modes.ts`; identical values, nothing
+>   renamed), but it costs the credential-aware filtering `loadOptions` was bought for. Recorded as
+>   **OWNER-6**, because that trade is a product decision.
 > - 🟢 **The owner ran the demo workflows on the bench and they completed without error.** That
 >   closes the half of the trace a CLI run cannot reach: the node renders in the editor, its
 >   credential is selectable, and it executes from the interface. What it does *not* settle is
