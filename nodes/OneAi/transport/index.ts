@@ -14,6 +14,55 @@ export interface OneAiApiRequestOptions {
 	qs?: IDataObject;
 }
 
+/**
+ * Request-ish shapes an HTTP client attaches to a rejected request. Only the
+ * parts that can carry the credential are named; everything else is left alone,
+ * because `NodeApiError` reads other fields to derive its message and status.
+ */
+interface ErrorWithRequestConfig {
+	config?: { headers?: IDataObject };
+	response?: { config?: { headers?: IDataObject } };
+}
+
+/**
+ * Remove the credential from a failed request before the error is handed to
+ * `NodeApiError`.
+ *
+ * 🔴 Why this exists. `NodeApiError` keeps the original error as `cause`, and
+ * whether that survives serialization into n8n's saved execution record depends
+ * on the host's `n8n-workflow`: the base class declares a `cause` class field
+ * from 1.99.0 onward (n8n 1.102.0), which shadows it out of `toJSON()`. Before
+ * that it is an own enumerable property, so `Authorization: Bearer oai_…` is
+ * written into `execution_data` and is readable by anyone who can open a failed
+ * execution or read n8n's database.
+ *
+ * We declare `"n8n-workflow": "*"` as a peer dependency and no `engines`, so we
+ * cannot assume the newer host. Scrubbing here makes the outcome independent of
+ * the host version instead of dependent on it, which is the property worth
+ * having: a mitigation that only works on hosts that did not need it is not a
+ * mitigation.
+ *
+ * The error object is about to be discarded, so it is scrubbed in place — that
+ * keeps its prototype and every other field intact for `NodeApiError`'s own
+ * parsing. Header names are matched case-insensitively because clients
+ * normalize them inconsistently.
+ */
+function withoutCredential(error: unknown): JsonObject {
+	const candidate = error as ErrorWithRequestConfig;
+	const SENSITIVE = new Set(['authorization', 'cookie', 'x-api-key', 'proxy-authorization']);
+
+	for (const headers of [candidate?.config?.headers, candidate?.response?.config?.headers]) {
+		if (!headers) continue;
+		for (const name of Object.keys(headers)) {
+			if (SENSITIVE.has(name.toLowerCase())) {
+				delete headers[name];
+			}
+		}
+	}
+
+	return error as JsonObject;
+}
+
 export async function oneAiApiRequest(
 	this: IExecuteFunctions,
 	options: OneAiApiRequestOptions,
@@ -47,7 +96,7 @@ export async function oneAiApiRequest(
 		);
 		return response as JsonObject;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		throw new NodeApiError(this.getNode(), withoutCredential(error));
 	}
 }
 
@@ -91,7 +140,7 @@ export async function oneAiApiRequestRaw(
 		);
 		return Buffer.from(response as ArrayBuffer);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		throw new NodeApiError(this.getNode(), withoutCredential(error));
 	}
 }
 
@@ -137,7 +186,7 @@ export async function oneAiApiRequestBinary(
 		);
 		return response as JsonObject;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		throw new NodeApiError(this.getNode(), withoutCredential(error));
 	}
 }
 
