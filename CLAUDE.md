@@ -79,7 +79,7 @@ with", no session link) in commits, PR bodies or files.
 
 | | what it is | effect on an existing workflow |
 |---|---|---|
-| **package version** (`0.1.9`) | npm semver, read by the operator who upgrades | **none directly** — the upgrade replaces the code every existing workflow runs |
+| **package version** (whatever `package.json` says) | npm semver, read by the operator who upgrades | **none directly** — the upgrade replaces the code every existing workflow runs |
 | **node `typeVersion`** (`version` in `OneAi.node.ts`) | stamped into every saved workflow node | **everything** — the only thing that pins old behaviour |
 
 Our node declares `version: 1` as a **plain number**, so every OneAI node anyone has ever placed is
@@ -114,8 +114,14 @@ derive the real type.**
 The code satisfies this literally today (`as any`: 0, `: any`: 0, `tsconfig` strict). The gap is
 elsewhere and a grep for `any` will never find it:
 
-- 🔴 **`IDataObject` appears 31 times.** It is n8n's own loose record type and cannot be banned
-  outright, but it is how untyped payloads actually enter this codebase.
+- 🔴 **`IDataObject` is how untyped payloads actually enter this codebase.** It is n8n's own loose
+  record type and cannot be banned outright — a row whose columns belong to the workflow author
+  genuinely is one. Count it before you argue about it, never from memory:
+
+  ```bash
+  grep -ro "IDataObject" nodes/ credentials/ --include=*.ts | wc -l
+  grep -rn "as any\|: any\b" nodes/ credentials/ --include=*.ts | wc -l   # must stay 0
+  ```
 **The spec is now committed** at `openapi/openapi.json` (325 paths / 401 operations) with an
 `openapi/PROVENANCE.md` naming the OneAI commit it was taken from and its SHA-256. Without that
 provenance every future drift report is unfalsifiable — "measured against which checkout?" has no
@@ -134,23 +140,65 @@ A path-level check is not enough. An endpoint whose path is unchanged but whose 
 passes it and fails at runtime. `scripts/drift-check.mjs` compares **method, path and request shape**
 across the whole surface, and it runs over everything, not only what was touched.
 
+🔴 **It compares requests only, and the response is the standing blind spot.** Two real defects lived
+there: `artifact:exportPdf` and `space:downloadFile` both read an `application/octet-stream` endpoint
+through the JSON transport helper. Tier 1 passes (the path resolves), tier 3 passes (there is no
+request body), lint and `tsc` have nothing to say. Until a response tier exists, sweep for it by hand
+after touching the surface — compare each call's declared `200` content type against the transport
+helper it uses; `oneAiApiRequestRaw` is the binary one.
+
+### Facts about the API that no check can find
+
+Constraints the OpenAPI schema does not express, so no tier of any checker will ever report them.
+Each cost a live request to discover; add to this list rather than rediscovering it.
+
+- 🔴 **A chat can only be created in a *project*** — a space whose `provider` is `project`. The
+  schema says only "Space ID to create the chat in". Any other space is rejected with
+  `Chats can only be created in projects.` The caller's `personalProject` is accepted; their
+  `personalSpace` is not.
+- 🔴 **`import-csv` does not coerce cells to the declared column type.** The same `BIGINT` column
+  returns `36` when written through `POST …/rows` and `"41"` when written through `import-csv`. A
+  workflow doing arithmetic on it gets a number from one path and string concatenation from the
+  other. The node states this rather than coercing client-side — guessing types on the way through
+  is how a node starts corrupting data.
+- **`GET /api/chats` returns `totalChats` unfiltered** beside a filtered `chats` array. Only
+  `hasNextPage` is safe to paginate on there.
+- **`POST …/rows` takes one row.** `{ data: [ … ] }` is rejected with
+  `Expected object but got array`; the plural `ids[]`/`inserted` in its response is a shape shared
+  with the bulk CSV endpoint, not evidence of bulk capability.
+
 ---
 
 ## 🔴 Presence is not correctness
 
-The rule this repository exists to remember. On 2026-09-03 we found that **`pairedItem` is set in
-every operation and points at the wrong item** — the `map((item, index) => …)` callback shadows the
-`index` parameter that names the input item, so rows report a lineage that was never real. 57 of 60
-source files; 65 files in the published `0.1.9`.
+The rule this repository exists to remember, and the case that taught it.
 
-Every check for the *token* was green. n8n's own guidance snippet carries the same shadowing, and we
-adopted it verbatim.
+`pairedItem` was set in **every** operation and pointed at the wrong item: the
+`map((item, index) => …)` callback shadowed the `index` parameter naming the input item, so rows
+reported a lineage that was never real. Every check for the *token* was green on all of them. n8n's
+own guidance snippet carries the same shadowing and we had adopted it verbatim.
 
-Three things follow, and they belong in every validator rule written here:
+The defect is fixed and `scripts/paired-item-check.mjs` now enforces the property. **The rules below
+outlive the defect** — they are why that checker resolves scopes instead of matching text, and they
+belong in every validator rule written here:
 
-1. **Assert the property, not the token.** "`pairedItem` is set" passes on 65 broken files. "`pairedItem` names the input item this row came from" does not.
-2. **A snippet from an authority is evidence about a shape, not a licence to skip thinking about our own case.** Theirs is right for one-input-to-one-output; most of our operations return many rows from one item.
-3. **Measure `origin/main`, never a stale checkout.** Two analyses on that day reported the wrong thing because the local tree was four commits behind and npm `latest` was two releases ahead.
+1. **Assert the property, not the token.** "`pairedItem` is set" passes on every broken file.
+   "`pairedItem` names the input item this row came from" does not.
+2. **The token is not always spelled the same.** The identical defect also appeared as
+   `.map((item, i) => ({ pairedItem: { item: i } }))`. A checker written from a *description* of the
+   bug missed it; one that resolves bindings did not care what the variable was called.
+3. **A snippet from an authority is evidence about a shape, not a licence to skip thinking about our
+   own case.** Theirs is right for one-input-to-one-output; most of our operations return many rows
+   from one item.
+4. **Measure `origin/main`, never a stale checkout.** Two analyses reported the wrong thing because
+   the local tree was four commits behind and npm `latest` was two releases ahead.
+5. **A finding document is evidence, not scripture.** The write-up of this defect recorded three
+   `{ item: i }` sites as *correct* on the grounds that they were all in `router.ts`. Only one was.
+   Re-measure what a document asserts before you build a check on it.
+
+**Both halves were observed running**, which is the standard to hold a fix to: with the defect,
+20 rows from 2 input items claimed descent from `{item:0}`…`{item:9}` — eight input items that did
+not exist, reported by nothing. With the fix, ten rows named item 0 and ten named item 1.
 
 ---
 
@@ -165,18 +213,27 @@ nodes/OneAi/
     <resource>/
       *.operation.ts     one file per operation: description + execute()
       index.ts
+      helpers.ts         shared shapes for a resource, where one exists
   transport/index.ts     the single HTTP seam — httpRequestWithAuthentication only
-  modes.ts               (0.1.9) the resource/operation registry
+  modes.ts               the resource/operation registry
 credentials/OneAiApi.credentials.ts
-scripts/drift-check.mjs  spec ↔ node surface, on shapes
+openapi/openapi.json     the committed spec snapshot; PROVENANCE.md names its OneAI commit
+scripts/drift-check.mjs        spec ↔ node surface, on shapes
+scripts/paired-item-check.mjs  every emitted row names the input item it came from
 docs/                    research, findings, orchestration — never shipped
 ```
 
-🔴 **29 operation files are commented out** of both `router.ts` and the node. They are in the
+🔴 **Operation files are commented out of both `router.ts` and the node.** They are in the
 repository, no lint rule sees them, and **any check that counts files instead of the shipped surface
-counts them**. The shipped surface on `origin/main` is **49 operations across 8 resources**, issuing
-58 distinct API calls — measured by `scripts/drift-check.mjs`, which parses the router rather than
-the directory. (Earlier hand counts said 67, then 51. Both were wrong, in the same direction.)
+counts them**. Never state the surface from memory or from a directory listing — ask the tool, which
+parses the router:
+
+```bash
+node scripts/drift-check.mjs | head -6      # resources, dispatched operations, API calls
+```
+
+Hand counts of this surface have been wrong three times (67, then 51, then 49-vs-51), always in the
+same direction: too high, because they counted files.
 
 ---
 
@@ -187,6 +244,21 @@ npm run lint          # n8n-node lint — n8n's own rule set
 npm run build         # n8n-node build
 npx tsc --noEmit      # strict, noImplicitAny
 node scripts/drift-check.mjs        # spec ↔ shipped surface, on shapes
+node scripts/paired-item-check.mjs  # lineage: every row names the input item it came from
+```
+
+Both checkers exit **1** on a real finding and **2** when their own extractor is broken. A 2 means
+every number they printed is fiction — it is never a finding.
+
+🔴 **`incremental` is off in `tsconfig.json`, and must stay off.** `n8n-node build` deletes `dist/`
+and then runs `tsc`; a surviving `.tsbuildinfo` convinces `tsc` everything is already emitted, so the
+build prints **"Build successful" and produces no JavaScript at all**. `prepublishOnly` is
+`build && lint` and is the only gate on the publish path, so it passes on that empty artefact. After
+any change to build configuration, check that the build actually emitted something:
+
+```bash
+rm -rf dist && npm run build && find dist -name '*.js' | wc -l   # must be non-zero
+npm run build && find dist -name '*.js' | wc -l                  # and again on a warm tree
 ```
 
 `.mjs` and not `.ts` on purpose: this repository has no lockfile and a fresh clone has no
@@ -243,9 +315,10 @@ commit, delete what you created afterwards and **verify the deletion**.
 of n8n* that was impossible before — this node's worth is as a junction in a graph, not as a mirror
 of an API. "14% of 409 endpoints" is not a deficiency to close.
 
-The worked example, from Oli: **OneData (datasets / tables) is the most important missing feature**,
-because hundreds of other n8n nodes can pull data out of other apps and this node is what lands it in
-a OneAI dataset.
+The worked example, from Oli, and it is the standard to judge the next feature by: **OneData
+(datasets / tables)** was the most important missing capability, because hundreds of other n8n nodes
+can pull data out of other apps and this node is what lands it in a OneAI dataset. It now ships —
+resources `dataset` and `datasetRow` — so use it as the shape of a good answer, not as an open item.
 
 Core surface named by the owner: **Chatting (very important)**, Spaces, Datasets, Audit Logs.
 
@@ -273,7 +346,7 @@ commit; archive anything you need outside the repository.
 | | |
 |---|---|
 | `docs/RESEARCH-2026-09-03-n8n-node-development.md` | the evidence base: versions, package bars, versioning, credentials, lint, triggers. Every claim classed and sourced |
-| `docs/FINDING-2026-09-03-paireditem-shadowing.md` | the open `pairedItem` defect |
+| `docs/FINDING-2026-09-03-paireditem-shadowing.md` | the `pairedItem` defect — **closed**, and kept because the reasoning is the house standard. Read it with §"Presence is not correctness": three of its claims about which sites were correct did not survive re-measurement |
 | `docs/N8N-DEV-FEEDBACK-certification.md` | n8n's three certification items — **closed**, kept as guidance |
 | `docs/N8N-DEV-FEEDBACK-oli-agent-guidance.md` + `ANALYSIS-…` | Oli's rules, checked against the code |
 | `.claude/agents/AGENTS.md` | the agent set and how a run is orchestrated |
