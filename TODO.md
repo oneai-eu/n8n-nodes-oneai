@@ -15,6 +15,11 @@
 Nothing released. All gates green on #3: drift 0 over 57 dispatched operations, lineage 0 over 99
 sites, lint/build/tsc clean. See `SESSION-HISTORY.md` § Session 0001.
 
+🟢 **Findable and working on the bench** — the owner confirmed the node appears in the nodes-panel
+search on 2026-09-04, after two fixes. 🔴 **Discoverability is invisible from inside the repository:**
+no build, diff or type cache shows it; only a browser does. `node scripts/panel-check.mjs` guards the
+two known causes, and it is not a substitute for someone typing the name into the panel.
+
 🟢 **Deployed on the bench:** `https://n8n.oneai.de` (n8n **2.37.9**, upgraded 2026-09-04 from
 2.32.7 — database dumped first to `/root/n8n-bench-backup/` on the host, service updated by name so
 the colleague's instance was untouched) runs the PR #3 build as the community package
@@ -79,7 +84,10 @@ renders, its credential is selectable and it executes from the interface, not on
 - **BL-2 · Trace the six untraced dataset operations** — `updateSchema`, `importCsv`, `exportCsv`,
   `update`, `delete`, and the `defineBelow`/`json` data modes — plus `continueOnFail` on both the
   item loop and the `appendMany` arm. *(P2)*
-- ✅ **BL-3 · CLOSED 2026-09-04 — and the answer is bad.** See OWNER-6.
+- ✅ **BL-3 · CLOSED 2026-09-04 — the node is findable, confirmed by the owner in the real panel.**
+  Two causes, both live-measured: `resource`/`operation` from `loadOptions` (zero actions), and
+  `"AI"` in the MAIN node's codex categories (routes it out of the search). `scripts/panel-check.mjs`
+  now guards both. See OWNER-6 and `SESSION-HISTORY.md`.
 - **BL-4 · Generate types from `openapi/openapi.json`,** the way the platform generates
   `src/openapi.gen.ts`. Until then "follow the spec's types" is a habit a reviewer must police
   rather than something the compiler enforces. *(P2)*

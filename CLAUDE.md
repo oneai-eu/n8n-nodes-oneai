@@ -147,6 +147,30 @@ request body), lint and `tsc` have nothing to say. Until a response tier exists,
 after touching the surface — compare each call's declared `200` content type against the transport
 helper it uses; `oneAiApiRequestRaw` is the binary one.
 
+### 🔴 Two ways to make this node invisible in the nodes panel
+
+Both shipped. Both were found by a person typing "oneai" into a real n8n and getting nothing —
+`lint`, `build`, `tsc` and both structural checkers were green throughout, because none of them
+asked the question a user asks. `node scripts/panel-check.mjs` now does.
+
+1. **`resource` / `operation` from `loadOptions`.** n8n's node creator is **action-first**: it builds
+   a node's panel entries from the **static `options` arrays** of those two parameters and from each
+   operation's `action` string. `loadOptions` is evaluated only once a node is already on the canvas,
+   so the node produces **zero actions**. Measured: this node 0 options / 0 actions, Slack 7 and 17
+   options / 7 actions, Perplexity 1 and 1 / 4. `0.1.9` shipped exactly this.
+2. 🔴 **`"AI"` in the MAIN node's codex `categories`.** It routes the node into the AI branch of the
+   creator, where the `*Tool` variants live, and it vanishes from the search. n8n generates
+   `oneAiTool` from `usableAsTool: true` and gives **that** `categories: ["AI"]` by itself — which is
+   where an AI Agent looks. Removing "AI" from the main node is what made it appear again, live.
+
+   Honest limit: cause 2 was the decisive change. Whether cause 1 alone also hides a node was never
+   tested in isolation — "zero actions AND no AI category" is an untried state. Both rules are
+   enforced because both are independently right, not because both are proven necessary.
+
+**Discoverability is not a property the repository can see.** Nothing in a build or a diff reveals
+it; only a browser does. Treat "the owner found it in the panel" as the acceptance test, and keep
+`panel-check.mjs` as the thing that stops the two known causes coming back.
+
 ### Facts about the API that no check can find
 
 Constraints the OpenAPI schema does not express, so no tier of any checker will ever report them.
@@ -245,6 +269,7 @@ npm run build         # n8n-node build
 npx tsc --noEmit      # strict, noImplicitAny
 node scripts/drift-check.mjs        # spec ↔ shipped surface, on shapes
 node scripts/paired-item-check.mjs  # lineage: every row names the input item it came from
+node scripts/panel-check.mjs        # can a workflow author FIND the node in the panel?
 ```
 
 Both checkers exit **1** on a real finding and **2** when their own extractor is broken. A 2 means

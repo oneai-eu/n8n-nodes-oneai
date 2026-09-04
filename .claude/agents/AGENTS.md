@@ -20,7 +20,7 @@ different machine, and copying across the difference is the failure mode to guar
 ## Order
 
 ```
- 0  drift-check + paired-item-check (scripts)  ── always first, and after every change
+ 0  drift-check + paired-item-check + panel-check  ── always first, and after every change
  1  node-architect           ── selection: what belongs in a workflow node ⏸ GATE
  2  node-implementer         ── one operation family per run
  3  node-validator  ┐
@@ -110,7 +110,8 @@ bodies change, and the operation you did not touch is the one that broke.
 ### `node-validator` — the gates, and whether the claims are true
 
 `npm run lint` · `npm run build` · `npx tsc --noEmit` · `node scripts/drift-check.mjs` ·
-`node scripts/paired-item-check.mjs` · `npx @n8n/scan-community-package`.
+`node scripts/paired-item-check.mjs` · `node scripts/panel-check.mjs` ·
+`npx @n8n/scan-community-package`.
 
 🔴 Both checkers exit **2** when their own extractor is broken; that is never a finding, it means
 every number they printed is fiction. And the scanner examines the **published** package, not the

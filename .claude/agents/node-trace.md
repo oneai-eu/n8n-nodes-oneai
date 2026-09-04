@@ -81,6 +81,12 @@ to something like `0.1.9-pr3`. Left at the release number, the UI claims to be r
 while running unreleased code; a marker also makes the rollback obvious (install the real version
 from npm).
 
+🔴 **Read the type cache only AFTER the restart has finished.** It is regenerated during boot, and
+reading it while n8n is still starting returns the previous contents. That race produced a confident
+and completely wrong diagnosis once — "n8n does not reload a package at the same version" — when the
+truth was simply that the file had not been rewritten yet. Wait for `/healthz`, then read, and sanity
+check the file's mtime against the clock.
+
 **Verify what actually loaded**, from n8n's own type cache rather than by assumption:
 `/home/node/.cache/n8n/public/types/nodes.json` — check the node's `name`, the resources present in
 its properties, `usableAsTool`, and `iconUrl`. (n8n renames the manifest's `icon` to `iconUrl` there;
@@ -119,9 +125,17 @@ unproven. Never print a key. Delete what you created and **verify the deletion**
 
 ## Legs
 
-1. **Discoverability** — does each operation appear as an action in the nodes panel? 🔴 Open question
-   (research U-7): 0.1.9 moved `resource`/`operation` to `loadOptions`, and if that broke action
-   discovery then every `action:` string is inert and the node became much harder to find.
+1. 🔴 **Discoverability — and it is the leg most likely to be skipped, because it needs a human.**
+   Research question U-7 is **answered**: `0.1.9` shipped a node that could not be found in the
+   panel at all. Two causes, both measured live — `resource`/`operation` coming from `loadOptions`
+   (zero actions, because the creator is action-first) and `"AI"` in the MAIN node's codex
+   categories (routes it into the AI branch and out of the search). `scripts/panel-check.mjs` now
+   guards both; run it, but **do not mistake it for the trace**. It reads source, not a browser.
+
+   The only real test is a person typing the node's name into the panel of the deployed instance.
+   Nothing in a build, a diff or a type cache shows this. If you cannot get a browser, say
+   **`NOT-REACHED`** and ask the owner to type one word — it costs them five seconds and it is the
+   difference between a node that ships and a node that ships invisibly.
 2. **As an AI tool** — the node declares `usableAsTool`. Wire it under an AI Agent and inspect the
    tool schema it exposes.
 3. **The workflow that matters** — build the real thing, not a smoke test. For OneData: pull data

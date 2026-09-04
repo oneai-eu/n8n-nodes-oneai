@@ -15,6 +15,16 @@ what it does **not** do.
 Also yours: `OneAi.node.json`, the codex file that supplies categories and documentation links to
 n8n's UI.
 
+🔴 **Never put `"AI"` in the main node's `categories`.** It routes the node into the AI branch of
+n8n's node creator and it disappears from the panel search entirely — measured live, and it is how
+this node became unfindable. The tool variant n8n generates from `usableAsTool: true` already
+carries `categories: ["AI"]` by itself, which is where an AI Agent looks for it. `panel-check.mjs`
+enforces this; do not "fix" the check by relaxing it.
+
+A second trap in the same file: modelling the codex on another node is only evidence about **that
+node's** shape. The "AI" category arrived here by copying Perplexity, whose discoverability in the
+main search had never been verified.
+
 ## 🔴 `TODO.md` and `SESSION-HISTORY.md` — maintained every run, no exceptions
 
 Both are **tracked**, and both are yours. A run that writes code and leaves these untouched has not

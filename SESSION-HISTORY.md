@@ -23,6 +23,29 @@
 > - **`TODO.md` and `SESSION-HISTORY.md` introduced**, tracked, following the oneglue convention,
 >   with `node-docs` owning them every run. Owner's framing, and it is the right one: `CLAUDE.md`
 >   holds what is always true; state and history belong elsewhere.
+> - 🟢 **RESOLVED — the node is findable, and it took TWO fixes, not one.** The owner confirmed it
+>   in the real panel. Cause 1 was the action-first creator reading static `options` (fixed:
+>   `resource`/`operation` generated from `modes.ts`, 0 → 57 actions). That alone was **not enough**.
+>   Cause 2 was `"AI"` in the MAIN node's codex `categories`, which routes a node into the AI branch
+>   of the creator and out of the search — and it had been added **that same morning**, copied from
+>   the Perplexity node whose findability nobody had checked. Removing it is what made the node
+>   appear.
+>
+>   Honest limit on the causal claim: state B (57 actions + "AI") was unfindable and state C (57
+>   actions, no "AI") is findable, so cause 2 is proven decisive. "Zero actions and no AI category"
+>   was never tested, so cause 1's necessity for mere findability is **unproven** — it is right
+>   anyway, because it is what puts the 57 operations in the panel as actions.
+>
+>   Two measurement errors of mine along the way, both of the house type. I found
+>   `maxAge = Time.days` and concluded the browser cached the node list for a day; read in context
+>   that applies to other static files, while the type files are served `no-cache, must-revalidate`.
+>   And I read the type cache **before the restart had finished rewriting it**, saw old categories,
+>   and concluded that n8n does not reload a package at an unchanged version. The file was simply
+>   five bytes shorter a moment later — exactly the length of `"AI",`.
+>
+>   `scripts/panel-check.mjs` now enforces all three properties (static options, an `action` on every
+>   operation, no "AI" on the main node), falsified by five mutations. **But the check reads source,
+>   not a browser** — the acceptance test is still a person typing the name into the panel.
 > - 🔴 **U-7 is answered, and the answer is a shipped defect: the node is unfindable in the nodes
 >   panel.** The owner searched "oneai" in the panel and got nothing. The mechanism was then
 >   established rather than guessed: n8n's node creator is **action-first** and builds a node's
