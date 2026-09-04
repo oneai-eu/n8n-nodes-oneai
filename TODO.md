@@ -61,16 +61,6 @@ and silently does nothing. `docker restart` is the only container verb allowed o
   else. HTTP Request ships `1, 2, 3, 4, 4.1 … 4.5` with `4`–`4.5` sharing one class. This is what
   makes a breaking change affordable instead of forbidden, and #2 spent its one free pass (every
   parameter it renamed belonged to an operation that could not succeed).
-- **OWNER-5 · The publish path is not reproducible, and it is the only gate.** No committed
-  lockfile (`.gitignore`d), CI runs `npm install`, plus `npm install -g npm@latest` and floating
-  `actions/*@v4`. Measured: five declared devDependencies resolve to **527 packages**, of which
-  **five run code at install time** (`cpu-features`, `isolated-vm`, `ssh2`, `unrs-resolver`, and
-  `eslint-plugin-n8n-nodes-base`, whose `preinstall` fetches a further unpinned package through
-  `npx only-allow`). That install runs **before** `prepublishOnly` builds `dist/`, so any of them can
-  rewrite the compiler that produces the published artefact — and the provenance attestation would
-  then truthfully name this commit while the bytes did not come from it. `prepublishOnly`
-  (`build && lint`) is the only gate that runs: no tests, no drift check, no scanner. Changing any of
-  this is itself a release-affecting act.
 - ✅ **OWNER-6 · CLOSED — the node is findable again**, by static `resource`/`operation` options
   generated from `modes.ts`, each carrying an `action`. Session 0001, PR #2. *Carried forward:* a
   static list cannot be filtered by the credential, so a Gateway-only credential sees hub operations
@@ -79,6 +69,11 @@ and silently does nothing. `docker restart` is the only container verb allowed o
 
 ## ▶ Open work
 
+- **BL-18 · Install scripts still run in the publish job.** Five of the locked packages execute at
+  install time (`cpu-features`, `isolated-vm`, `ssh2`, `unrs-resolver`, and
+  `eslint-plugin-n8n-nodes-base`, whose `preinstall` fetches from the registry), and `dist/` is
+  built in that same job. `--ignore-scripts` would break the native builds that lint depends on, so
+  the real fix is to build the artefact somewhere the devDependencies are not installed. *(P2)*
 - **BL-1 · A response tier for `drift-check`.** It compares requests only. Two real defects lived in
   the response side (`artifact:exportPdf`, `space:downloadFile`) and no tier could see either. The
   by-hand sweep that found them — compare each call's declared `200` content type against its
@@ -135,6 +130,13 @@ and silently does nothing. `docker restart` is the only container verb allowed o
   dropdown text and the README now say what it does. Session 0002.
 
 ## ▶ Closed
+
+- ✅ **OWNER-5 · The publish path is reproducible.** `package-lock.json` is committed and CI runs
+  `npm ci`; the actions are pinned to commit SHAs; `npm install -g npm@latest` is gone. 🔴 **Not
+  closed by this:** five of the locked packages still execute install scripts, and `dist/` is still
+  built inside the publishing job by `prepublishOnly`, so an install script can still act before the
+  compiler. What changed is that the set is now fixed and auditable rather than resolved afresh on
+  every publish — and the `npm-publish` environment puts a human in front of it. Filed as **BL-18**.
 
 - ✅ **OWNER-1 · Merged and released.** `0.2.0` is on npm with provenance, verified against the
   downloaded tarball. Session 0002.
