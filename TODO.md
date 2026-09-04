@@ -15,7 +15,9 @@
 Nothing released. All gates green on #3: drift 0 over 57 dispatched operations, lineage 0 over 99
 sites, lint/build/tsc clean. See `SESSION-HISTORY.md` § Session 0001.
 
-🟢 **Deployed on the bench:** `https://n8n.oneai.de` runs the PR #3 build as the community package
+🟢 **Deployed on the bench:** `https://n8n.oneai.de` (n8n **2.37.9**, upgraded 2026-09-04 from
+2.32.7 — database dumped first to `/root/n8n-bench-backup/` on the host, service updated by name so
+the colleague's instance was untouched) runs the PR #3 build as the community package
 `@oneai-eu/n8n-nodes-oneai`, marked `0.1.9-pr3` so it cannot be mistaken for the npm release.
 Credential *OneAI devtest (bench, 2026-09-04)* and three demo workflows (`OneAI · 1/2/3`) are in the
 owner's personal project; the demo dataset is the `oneData` space **n8n Demo Data**, table

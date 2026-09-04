@@ -92,6 +92,21 @@ a `{light,dark}` pair survives as a pair, so `icon: undefined` in that file is n
 file, and it has destroyed n8n there before. On the bench itself `docker restart` is allowed;
 `stop`, `kill` and `rm` are not.
 
+**Keeping the bench current.** It is compose-managed as project `oneai-devtest`, service `n8n`
+(`/opt/oneai-devtest/docker-compose.yml`), on the shared tag `n8nio/n8n:latest`. Update it by
+service name so nothing else moves:
+
+```bash
+docker exec oneai-devtest-postgres pg_dump -U postgres -d n8n -Fc > <backup>   # migrations are forward-only
+cd /opt/oneai-devtest && docker compose pull n8n && docker compose up -d n8n
+```
+
+🔴 **Always name the service.** A bare `docker compose up -d` would also recreate `n8n-ralf`, the
+colleague's instance, onto the newly pulled image — they share the `:latest` tag. Dump the `n8n`
+database first: an n8n upgrade migrates the schema forward and there is no downgrade. The community
+package lives in the `oneai-devtest-n8n` volume and survives a recreate; verify it anyway, from the
+type cache and by running a demo workflow.
+
 **Running a workflow inside the live container:** `n8n execute --id=<id>` collides with the running
 instance's task broker (`port 5679 is already in use`). Give the CLI its own:
 `-e N8N_RUNNERS_BROKER_PORT=5699`. Import first — `n8n import:workflow` and `import:credentials`

@@ -43,6 +43,14 @@ and treat a version bump as reopening the question.
 What *does* reach the record: `context.data`, set verbatim from `error.response.data`. So the
 residual exposure is whatever OneAI puts in an error body — a question for the API, not the node.
 
+**2b. 🔴 The bench credential is authorised, and is NOT a finding.**
+A OneAI API key lives in the credential store of `https://n8n.oneai.de` and is meant to: the owner
+ruled on 2026-09-04 that the bench should be usable on arrival, so a run deliberately leaves one
+there under their account. Report it as configuration, not as a leak. What *would* be findings: a
+key in a file, a log, a report, a commit or a node parameter; a key that is not labelled well enough
+to be revoked; or a key on any instance other than the bench. Production is `n8n.oneai.eu` and no
+run touches it.
+
 **3. What we put into workflow output.**
 Node output is persisted and visible to anyone who can open the execution. Provider error bodies land
 there. Ask what a OneAI error body can contain.

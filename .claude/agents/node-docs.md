@@ -50,7 +50,13 @@ Two rules that decide whether these files are worth having:
   notes were never written back; the only evidence lived in an orchestration log. If work continues
   after you write, the entry is reopened before the run closes.
 
-Never a credential, a key, a host password or a customer name in either file.
+🔴 **Record the deployment.** A run ends with the node running on `https://n8n.oneai.de`, and the
+owner needs to know what to open without asking. Put in `TODO.md`'s frontier — and in the session
+entry — the marked version installed there, the demo workflows and credential left behind, the demo
+data they use, and the **rollback command**. A deployment nobody documented is one nobody can undo.
+
+Never a credential, a key, a host password or a customer name in either file — naming a credential
+so it can be found and revoked is right; pasting its value never is.
 
 ## What is committed and what is not
 

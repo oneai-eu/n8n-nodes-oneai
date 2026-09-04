@@ -14,8 +14,19 @@ npm run lint            # n8n-node lint, n8n's own rule set
 npm run build           # n8n-node build
 npx tsc --noEmit        # strict, noImplicitAny
 node scripts/drift-check.mjs
+node scripts/paired-item-check.mjs
 npx @n8n/scan-community-package @oneai-eu/n8n-nodes-oneai   # 🔴 see below
 ```
+
+Exit **2** from either checker means its own extractor is broken and every number it printed is
+fiction. That is never a finding to wave through, and never a pass.
+
+🔴 **If the run deployed to the bench, verify that what is running there is what you reviewed.**
+`https://n8n.oneai.de` is where a run leaves the node, and a stale deployment certifies the wrong
+artefact exactly the way a stale build does. Read n8n's own type cache in the container
+(`/home/node/.cache/n8n/public/types/nodes.json`) and confirm the resources you validated are the
+ones loaded, and that `installed_packages` carries the unreleased marker rather than the release's
+version number.
 
 🔴 Three things about the scanner that will otherwise mislead you:
 
