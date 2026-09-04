@@ -155,11 +155,26 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						case 'delete':
 							responseData = await chat.delete.execute.call(this, i);
 							break;
+						case 'export':
+							responseData = await chat.export.execute.call(this, i);
+							break;
 						case 'get':
 							responseData = await chat.get.execute.call(this, i);
 							break;
+						case 'getBlob':
+							responseData = await chat.getBlob.execute.call(this, i);
+							break;
+						case 'getBlobUrl':
+							responseData = await chat.getBlobUrl.execute.call(this, i);
+							break;
 						case 'list':
 							responseData = await chat.list.execute.call(this, i);
+							break;
+						case 'rateMessage':
+							responseData = await chat.rateMessage.execute.call(this, i);
+							break;
+						case 'saveBlobToSpace':
+							responseData = await chat.saveBlobToSpace.execute.call(this, i);
 							break;
 						case 'update':
 							responseData = await chat.update.execute.call(this, i);

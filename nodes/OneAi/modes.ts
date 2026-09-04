@@ -104,8 +104,13 @@ export const OPERATIONS: Record<string, OperationDefinition[]> = {
 	chat: [
 		{ name: 'Create', value: 'create', description: 'Create a new chat', action: 'Create a chat', gateway: false },
 		{ name: 'Delete', value: 'delete', description: 'Delete a chat', action: 'Delete a chat', gateway: false },
+		{ name: 'Export', value: 'export', description: 'Export a chat as a Markdown document', action: 'Export a chat as Markdown', gateway: false },
 		{ name: 'Get', value: 'get', description: 'Get chat history', action: 'Get a chat', gateway: false },
+		{ name: 'Get Blob', value: 'getBlob', description: 'Download an image or file that a chat produced, as binary data. Get returns the blob IDs, on the parts of its assistant messages.', action: 'Get a chat blob', gateway: false },
+		{ name: 'Get Blob URL', value: 'getBlobUrl', description: 'Generate a pre-authenticated URL for a chat blob. The link is signed and time-limited, needs no oneAI credential, and is stored in the execution data.', action: 'Get a chat blob URL', gateway: false },
 		{ name: 'List', value: 'list', description: 'List chats with optional filtering', action: 'List all chats', gateway: false },
+		{ name: 'Rate Message', value: 'rateMessage', description: 'Rate an assistant message thumbs up or down. Removing a rating is not part of this node, although the API supports it.', action: 'Rate a chat message', gateway: false },
+		{ name: 'Save Blob to Space', value: 'saveBlobToSpace', description: 'Save a chat blob into a space as a file, without moving the bytes through n8n', action: 'Save a chat blob to a space', gateway: false },
 		{ name: 'Update', value: 'update', description: 'Update chat details (rename, switch branch, or set persona/agent)', action: 'Update a chat', gateway: false },
 	],
 	compliancePattern: [
