@@ -15,6 +15,14 @@
 Nothing released. All gates green on #3: drift 0 over 57 dispatched operations, lineage 0 over 99
 sites, lint/build/tsc clean. See `SESSION-HISTORY.md` § Session 0001.
 
+🟢 **Deployed on the bench:** `https://n8n.oneai.de` runs the PR #3 build as the community package
+`@oneai-eu/n8n-nodes-oneai`, marked `0.1.9-pr3` so it cannot be mistaken for the npm release.
+Credential *OneAI devtest (bench, 2026-09-04)* and three demo workflows (`OneAI · 1/2/3`) are in the
+owner's personal project; the demo dataset is the `oneData` space **n8n Demo Data**, table
+`contacts`. Verified by a real run: 5 items in, 5 rows landed, `age` a number.
+**Rollback:** in `/home/node/.n8n/nodes`, `npm install @oneai-eu/n8n-nodes-oneai@0.1.9`, then
+`docker restart oneai-devtest-n8n`.
+
 ---
 
 ## ▶ Needs the owner — blocking nothing, but nobody else can rule
@@ -51,7 +59,8 @@ sites, lint/build/tsc clean. See `SESSION-HISTORY.md` § Session 0001.
 - **BL-2 · Trace the six untraced dataset operations** — `updateSchema`, `importCsv`, `exportCsv`,
   `update`, `delete`, and the `defineBelow`/`json` data modes — plus `continueOnFail` on both the
   item loop and the `appendMany` arm. *(P2)*
-- **BL-3 · The nodes panel is unproven.** Whether the operations appear as *actions* after the
+- **BL-3 · The nodes panel is unproven** — *now openable: the node is deployed on the bench, so this
+  needs a browser and five minutes rather than a rig.* Whether the operations appear as *actions* after the
   0.1.9 `loadOptions` move needs a browser against a running n8n. Ten new operations make the answer
   more consequential, not less. *(P2)*
 - **BL-4 · Generate types from `openapi/openapi.json`,** the way the platform generates

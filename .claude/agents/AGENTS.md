@@ -133,8 +133,10 @@ Not: multi-tenancy, confirmation gates, our own egress. Those are the platform's
 
 ### `node-trace` — both halves are ours
 
-`n8n-node dev` boots a local n8n with the node — one command, the supported path. OneAI to trace
-against is **devtest**; `n8n.oneai.de` resolves to the same machine.
+🔴 **The run ends with the node deployed on `n8n.oneai.de`** — the bench exists so the owner can
+open it the next morning and try the thing. Replace the installed community package there and
+restart it; production is `n8n.oneai.eu` and the `-ralf` container is a colleague's. OneAI to trace
+against is **devtest** on the same host.
 
 🔴 `oneai-devtest-n8n` serves `n8n.oneai.de` and `oneai-devtest-n8n-ralf` belongs to a colleague.
 Boot your own; touch neither. Never `--remove-orphans` on that host.

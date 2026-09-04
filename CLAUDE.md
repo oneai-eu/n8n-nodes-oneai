@@ -295,17 +295,34 @@ Both halves are ours, so a trace can be end-to-end and real.
 
 - `n8n-node dev` compiles the node and boots a **local** n8n with it — the supported path, one
   command. (Manually: `npm run build` → `npm link` → `npm link <package>` in `~/.n8n/custom` → `n8n start`.)
-- OneAI to trace against: **devtest**. `n8n.oneai.de` resolves to the same machine.
-- 🔴 **`oneai-devtest-n8n` serves `n8n.oneai.de` and `oneai-devtest-n8n-ralf` belongs to a colleague.**
-  Boot your own instance; do not touch theirs. Never `docker compose … --remove-orphans` on that host.
+- 🔴 **Deploy into `n8n.oneai.de` — that is what it is for.** Owner ruling 2026-09-04: it is the
+  **test bench**, stood up so that a development run ends with the node *running* somewhere the
+  owner can open it the next morning and try it. A run that leaves only pull requests is half
+  finished. The container is `oneai-devtest-n8n`, and it already carries
+  `@oneai-eu/n8n-nodes-oneai` as an installed **community package**, so a deployment there exercises
+  the real node type `@oneai-eu/n8n-nodes-oneai.oneAi` — not the `CUSTOM.` name a linked directory
+  gives you.
+- 🔴 **Production is `n8n.oneai.eu`, a different machine. Never touch it.** And
+  `oneai-devtest-n8n-ralf` is a colleague's: never stop, restart or remove it. Never run
+  `docker compose … --remove-orphans` on that host — it deletes containers that are not in the compose file and
+  has destroyed n8n there before. `docker restart oneai-devtest-n8n` is allowed and is part of
+  deploying; `stop`, `kill` and `rm` are not.
+- OneAI to trace against: **devtest**, the `oneai-devtest` container on the same host, reachable
+  from the n8n container as `http://oneai-devtest:3000`.
 
 **Owner authorisation (2026-09-03):** generate whatever credentials a trace needs on devtest —
 a **user API key** and a **gateway API key**. Both classes matter because they are validated
 differently: `oai_` against the hub via `/api/auth/check`, `oai-gk_` against the OneAI Gateway. A
 trace that exercises one leaves the other unproven.
 
-Credential discipline is unchanged: never print a key, never let one reach a report, log, fixture or
-commit, delete what you created afterwards and **verify the deletion**.
+Credential discipline: never print a key, never let one reach a report, log, fixture or commit.
+Delete throwaway credentials and **verify the deletion** — but a credential left in place on the
+bench so the owner can actually use the instance is **not** a leak, it is the point. The owner has
+authorised one to persist under their account; label it so it is identifiable and revocable, and say
+in the report that it persists.
+
+🔴 **Delete test DATA before credentials.** Removing the key first locks you out of the API you need
+in order to clean up, and the recovery is minting another one.
 
 ---
 

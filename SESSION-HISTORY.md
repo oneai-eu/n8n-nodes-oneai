@@ -23,6 +23,15 @@
 > - **`TODO.md` and `SESSION-HISTORY.md` introduced**, tracked, following the oneglue convention,
 >   with `node-docs` owning them every run. Owner's framing, and it is the right one: `CLAUDE.md`
 >   holds what is always true; state and history belong elsewhere.
+> - 🔴 **The run left nothing to look at, and that was a substrate error, not a judgement call.**
+>   `CLAUDE.md`, `AGENTS.md`, `node-trace.md` and the bash hook all said `oneai-devtest-n8n` was
+>   somebody else's and to boot your own instance. **Owner ruling: `n8n.oneai.de` is the test bench
+>   and exists precisely so a run ends with the node deployed for the owner to try; production is
+>   `n8n.oneai.eu`.** So the whole throwaway rig — a local n8n, a throwaway Postgres, a torn-down
+>   tunnel — was work spent avoiding the machine that was there for it, and the owner woke up to two
+>   pull requests and nothing to click. All four places are corrected, and the hook now permits
+>   `docker restart` on the bench while still blocking the colleague's container and every
+>   destructive verb (six cases checked). The node is now deployed and verified there.
 > - 🔴 **An audit found the run's lessons had NOT reached the individual agent definitions.** They
 >   were in `CLAUDE.md`, the PR bodies and the phase reports — but each agent reads its own file, so
 >   the next run would have paid for them again. The `executeAll`-invisible-to-both-checkers lesson,

@@ -27,8 +27,9 @@ so.**
 
 ### A headless recipe that works, and four things that cost a night to find
 
-`n8n-node dev` wants a terminal. For an autonomous run, drive n8n by CLI instead. Every item below
-was established the hard way on 2026-09-03 — take them as facts, not as a starting point to rederive:
+`n8n-node dev` wants a terminal. For an autonomous run, drive n8n by CLI instead. Use this when you
+need an instance of your own — the primary path is deploying to the bench, below. Every item here
+was established the hard way on 2026-09-03; take them as facts, not as a place to start rederiving:
 
 1. 🔴 **`n8n execute --file` does not exist in n8n 2.x.** It answers `"--id" has to be set!`. The
    working sequence is `import:credentials` → `import:workflow` → `execute --id=<workflow id>`.
@@ -39,9 +40,10 @@ was established the hard way on 2026-09-03 — take them as facts, not as a star
 3. 🔴 **A node loaded from a custom directory registers as `CUSTOM.oneAi`, not under the package
    name.** `CustomDirectoryLoader` sets `packageName = 'CUSTOM'`, while a genuinely installed
    community package goes through `PackageDirectoryLoader`, which uses `packageJson.name` and yields
-   `@oneai-eu/n8n-nodes-oneai.oneAi`. Your workflow JSON must say `CUSTOM.oneAi` — and **the type
-   string a real user's workflow stores is therefore NOT exercised**. Say so in the report; it is a
-   real limit, not a detail.
+   `@oneai-eu/n8n-nodes-oneai.oneAi`. Your workflow JSON must then say `CUSTOM.oneAi`, and the type
+   string a real user's workflow stores is **not** exercised — which is one more reason the bench
+   deployment below is the primary path and this one is the fallback. If you do use it, say so in
+   the report; it is a real limit, not a detail.
 4. **`n8n execute` prints nothing useful, but it persists the run.** Read the truth out of the
    database: `execution_entity` for status, `execution_data` for the rows. The payload is encoded
    with `flatted` — every value is an index into one flat array — so hydrate it with a memoised
@@ -54,12 +56,46 @@ Delete the spaces, tables, chats and workflows you created **before** the API ke
 first locks you out of the API you need to clean up with, and the recovery is minting another key —
 which is one more credential to create, use and prove dead. Learned by doing it in the wrong order.
 
-OneAI to trace against: **devtest**. `n8n.oneai.de` resolves to the same machine.
+### 🔴 Deploy into `n8n.oneai.de`. That is the job, not a courtesy.
 
-🔴 **`oneai-devtest-n8n` serves `n8n.oneai.de`; `oneai-devtest-n8n-ralf` belongs to a colleague.**
-Boot your own instance. Never stop, restart or remove theirs, and never
+Owner ruling 2026-09-04, and it corrects an earlier misreading that cost a whole run: **the bench
+exists so that a development run leaves the node running somewhere the owner can open and try it the
+next morning.** Finishing with two pull requests and a torn-down throwaway instance is finishing
+half the job.
+
+The container is `oneai-devtest-n8n`, and it already has `@oneai-eu/n8n-nodes-oneai` installed as a
+**community package**. Replace that package rather than linking a directory: it keeps the real node
+type `@oneai-eu/n8n-nodes-oneai.oneAi` and the community-node bookkeeping, and it is what a real
+user's install looks like.
+
+```bash
+npm pack                                   # build the tarball from the branch
+# copy in, then, as the `node` user, in /home/node/.n8n/nodes:
+#   npm install /tmp/<tarball>             # chmod 644 the tarball first - root-owned files are unreadable to `node`
+# then rewrite nodes/package.json to a plain version string (npm leaves a `file:` path)
+docker restart oneai-devtest-n8n           # allowed, and required for n8n to pick it up
+```
+
+🔴 **Mark the version so nobody mistakes it for the release.** Set `installed_packages`.`installedVersion`
+to something like `0.1.9-pr3`. Left at the release number, the UI claims to be running npm's version
+while running unreleased code; a marker also makes the rollback obvious (install the real version
+from npm).
+
+**Verify what actually loaded**, from n8n's own type cache rather than by assumption:
+`/home/node/.cache/n8n/public/types/nodes.json` — check the node's `name`, the resources present in
+its properties, `usableAsTool`, and `iconUrl`. (n8n renames the manifest's `icon` to `iconUrl` there;
+a `{light,dark}` pair survives as a pair, so `icon: undefined` in that file is normal, not a defect.)
+
+🔴 **Production is `n8n.oneai.eu`, a different machine. Never touch it.** And
+`oneai-devtest-n8n-ralf` is a colleague's: never stop, restart or remove it, and never
 `docker compose … --remove-orphans` on that host — it deletes containers that are not in the compose
-file, and it has destroyed n8n there before.
+file, and it has destroyed n8n there before. On the bench itself `docker restart` is allowed;
+`stop`, `kill` and `rm` are not.
+
+**Running a workflow inside the live container:** `n8n execute --id=<id>` collides with the running
+instance's task broker (`port 5679 is already in use`). Give the CLI its own:
+`-e N8N_RUNNERS_BROKER_PORT=5699`. Import first — `n8n import:workflow` and `import:credentials`
+assign the personal project automatically, so the owner sees them in the UI.
 
 **Owner authorisation (2026-09-03):** generate the credentials you need on devtest — a **user API
 key** and a **gateway API key**. Exercise **both**: `oai_` validates against the hub via
