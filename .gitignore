@@ -8,3 +8,6 @@
 .claude/settings.local.json
 .claude/hooks/
 docs/orchestration/*/
+
+# npm pack output — build artefacts never belong in the repository
+*.tgz
