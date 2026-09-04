@@ -18,6 +18,7 @@ export interface OperationDefinition {
 export const RESOURCES: ResourceDefinition[] = [
 	{ name: 'AI', value: 'ai', description: 'Inference: chat, images, speech, embeddings, transcription', gateway: true },
 	{ name: 'Artifact', value: 'artifact', description: 'Hub artifacts (markdown, PDFs, distilled documents)', gateway: false },
+	{ name: 'Audit Log', value: 'auditLog', description: 'Hub audit logs (EU AI Act compliance records)', gateway: false },
 	{ name: 'Chat', value: 'chat', description: 'Hub chat management', gateway: false },
 	{ name: 'Compliance Pattern', value: 'compliancePattern', description: 'Hub compliance patterns (EU AI Act content policies)', gateway: false },
 	{ name: 'Dataset', value: 'dataset', description: 'Tables in a oneData space: schema, CSV import and export', gateway: false },
@@ -96,6 +97,10 @@ export const OPERATIONS: Record<string, OperationDefinition[]> = {
 		{ name: 'List All', value: 'listAll', description: 'List all artifacts with optional filtering', action: 'List all artifacts', gateway: false },
 		{ name: 'List by Space', value: 'listBySpace', description: 'List artifacts in a specific space', action: 'List artifacts in space', gateway: false },
 	],
+	auditLog: [
+		{ name: 'Get', value: 'get', description: 'Get an audit log by ID', action: 'Get an audit log', gateway: false },
+		{ name: 'List', value: 'list', description: 'List audit logs with optional filtering', action: 'List audit logs', gateway: false },
+	],
 	chat: [
 		{ name: 'Create', value: 'create', description: 'Create a new chat', action: 'Create a chat', gateway: false },
 		{ name: 'Delete', value: 'delete', description: 'Delete a chat', action: 'Delete a chat', gateway: false },
@@ -170,6 +175,7 @@ export const DEFAULT_RESOURCE = 'ai';
 export const DEFAULT_OPERATION_PER_RESOURCE: Record<string, string> = {
 	ai: 'createResponse',
 	artifact: 'listAll',
+	auditLog: 'list',
 	chat: 'list',
 	compliancePattern: 'list',
 	dataset: 'list',
