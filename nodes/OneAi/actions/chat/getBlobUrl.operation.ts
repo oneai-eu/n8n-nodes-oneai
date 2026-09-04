@@ -16,6 +16,12 @@ import { oneAiApiRequest } from '../../transport';
  * `oneAiApiRequest` sends the body only when it has at least one key. Modelled as "omit unless
  * the author asks", the node would send NO BODY AT ALL against a required body. So `thumbnail` is
  * a top-level boolean with an explicit default and is always included.
+ *
+ * 🔴 The API returns the URL RELATIVE, with no scheme and no host - traced live on 2026-09-04. A
+ * relative URL cannot be handed to an HTTP Request node, pasted into Slack or embedded in a mail,
+ * which is the entire point of this operation, and nothing in the output said so. The verbatim
+ * `url` is still emitted unchanged, because the response is the API's to define; `absoluteUrl` is
+ * added beside it, resolved against the credential's base URL, and that is the one to wire.
  */
 export const description: INodeProperties[] = [
 	{
@@ -83,8 +89,20 @@ export async function execute(
 		body,
 	});
 
-	return this.helpers.returnJsonArray(response).map((item) => ({
-		...item,
-		pairedItem: { item: index },
-	}));
+	// The API answers with a relative URL. Emit it verbatim - the response shape is the API's to
+	// define - and add the resolved one beside it, because a relative URL is useless to every node
+	// this operation exists to feed.
+	const credentials = await this.getCredentials('oneAiApi');
+	const baseUrl = (credentials.url as string).replace(/\/$/, '');
+	const url = response.url as string | undefined;
+
+	return this.helpers
+		.returnJsonArray({
+			...response,
+			absoluteUrl: url === undefined ? undefined : new URL(url, `${baseUrl}/`).toString(),
+		})
+		.map((item) => ({
+			...item,
+			pairedItem: { item: index },
+		}));
 }

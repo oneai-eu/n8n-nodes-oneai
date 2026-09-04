@@ -81,9 +81,9 @@ export const description: INodeProperties[] = [
 		name: 'mimeType',
 		type: 'string',
 		required: true,
-		default: 'image/png',
+		default: 'application/octet-stream',
 		description:
-			'The MIME type to label the downloaded bytes with. Get on this resource returns mimeType on every blob part, so wire it from there rather than relying on the default. n8n derives the file extension and the editor preview from this value.',
+			'The MIME type to label the downloaded bytes with. Get on this resource returns mimeType on every blob part, so wire it from there rather than relying on the default. n8n derives the file extension and the editor preview from this value, so leaving the default in place on an image gives you correct bytes with no preview - while a wrong value gives you a file that lies about what it is.',
 		displayOptions: {
 			show: {
 				resource: ['chat'],

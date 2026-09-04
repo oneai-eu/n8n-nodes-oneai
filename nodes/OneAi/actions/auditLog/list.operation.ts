@@ -16,6 +16,13 @@ import { AUDIT_LOG_ORIGIN_OPTIONS, AUDIT_LOG_RISK_LEVEL_OPTIONS } from './helper
  * until somebody turns the workflow off.
  */
 
+/**
+ * The largest page `GET /api/audit/logs` will serve. The spec states it in prose
+ * ("Default is 10, maximum is 30") and not as a schema `maximum`, so no drift tier can see it, and
+ * the endpoint clamps to it silently instead of failing.
+ */
+const AUDIT_LOG_MAX_PAGE_SIZE = 30;
+
 export const description: INodeProperties[] = [
 	{
 		displayName: 'Return All',
@@ -83,7 +90,7 @@ export const description: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description:
-					'Only return logs created at or after this time. Set it from the previous run so a scheduled poll reads each log once; oneAI clamps it to the retention window of the plan.',
+					'Only return logs created strictly after this time, not at it. Traced against a live instance: the comparison is exclusive, which is what a scheduled poll wants - set it from the previous run and each log is read once. oneAI clamps it to the retention window of the plan.',
 			},
 			{
 				displayName: 'User ID',
@@ -148,17 +155,38 @@ export async function execute(
 	}
 
 	const limit = this.getNodeParameter('limit', index) as number;
-	qs.pageSize = limit;
-	qs.page = 0;
 
-	const response = await oneAiApiRequest.call(this, {
-		method: 'GET',
-		endpoint: '/api/audit/logs',
-		qs,
-	});
+	// 🔴 This endpoint caps a page at 30 and CLAMPS SILENTLY rather than rejecting - measured
+	// against a live instance on 2026-09-04, where asking for 50 returned 30 and said nothing.
+	// Sending `pageSize: limit` therefore under-delivered at the Limit field's own default of 50,
+	// which shipped that way in 0.2.0. n8n's lint rules fix the field's default and description in
+	// place, and rightly so - the convention is worth more than a bespoke warning - so the promise
+	// is kept here instead: pages of 30 are read until `limit` is satisfied or the API runs out.
+	const logs: IDataObject[] = [];
+	let page = 0;
 
-	const logs = (response.logs as IDataObject[]) || [];
-	return this.helpers.returnJsonArray(logs).map((item) => ({
+	while (logs.length < limit) {
+		qs.pageSize = Math.min(AUDIT_LOG_MAX_PAGE_SIZE, limit - logs.length);
+		qs.page = page;
+
+		const response = await oneAiApiRequest.call(this, {
+			method: 'GET',
+			endpoint: '/api/audit/logs',
+			qs,
+		});
+
+		const batch = (response.logs as IDataObject[]) || [];
+		logs.push(...batch);
+
+		const pagination = response.pagination as IDataObject | undefined;
+		if (batch.length === 0 || pagination?.hasNextPage !== true) {
+			break;
+		}
+
+		page++;
+	}
+
+	return this.helpers.returnJsonArray(logs.slice(0, limit)).map((item) => ({
 		...item,
 		pairedItem: { item: index },
 	}));

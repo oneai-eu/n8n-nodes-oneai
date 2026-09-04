@@ -9,14 +9,19 @@ import { AUDIT_LOG_ORIGIN_OPTIONS } from './helpers';
  * recurring response-shape defect (`artifact:exportPdf`, `space:downloadFile`), and no drift tier
  * can see it: tier 1 only resolves the path and tier 3 compares the request.
  *
- * 🔴 `OUTPUT_FILE_NAME` and `OUTPUT_MIME_TYPE` are module constants, and the file name carries a
- * `.zip` suffix on purpose. n8n's Compression node dispatches on `binaryData.fileExtension` -
- * NOT on the MIME type - and throws `File extension not found for binary data` when it is absent.
- * `prepareBinaryData` derives that extension from the file name it is given, so a name without a
- * suffix would kill the very next node in the archetypal workflow with an error that never
- * mentions oneAI. There is deliberately no File Name option: an override's natural state includes
- * extensionless names, which is the failure this constant exists to make unreachable. The name is
- * echoed into `json` so a downstream Drive / S3 / email node can rename the file itself.
+ * 🔴 `OUTPUT_FILE_NAME` and `OUTPUT_MIME_TYPE` are module constants because n8n's Compression node
+ * dispatches on `binaryData.fileExtension` - NOT on the MIME type - and throws
+ * `File extension not found for binary data` when it is absent.
+ *
+ * Which constant actually carries that was measured, not reasoned: this comment previously
+ * credited the `.zip` suffix on the file name, and a live falsification on 2026-09-04 overturned
+ * it. Stripping the suffix alone still works, because `prepareBinaryData` derives the extension
+ * from the MIME type when the name does not supply one. Only breaking `OUTPUT_MIME_TYPE` as well
+ * fails, with `Unsupported archive format ".bin"`. **`OUTPUT_MIME_TYPE` is the load-bearing
+ * constant**; the suffix is belt and braces and worth keeping as such.
+ *
+ * There is deliberately no File Name option: an override's natural state includes extensionless
+ * names. The name is echoed into `json` so a downstream Drive / S3 / email node can rename it.
  *
  * 🔴 `fields` is REQUIRED and has NO `required` list of its own, so `{}` is accepted and returns
  * an archive with no columns. The body is therefore built as all ten keys with explicit booleans,
