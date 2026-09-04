@@ -55,12 +55,6 @@ and silently does nothing. `docker restart` is the only container verb allowed o
   trusted publishing — so there is **no token to revoke** and the entire control surface is who may
   create a release. A compromise of any one of the five accounts ships to npm with a valid
   provenance attestation, which is the trust signal. Also: no `environment:` gate on the publish job.
-- **OWNER-3 · Move to `VersionedNodeType`.** `version: 1` is a plain number, so every release lands
-  directly on `typeVersion: 1` in every saved workflow, and `getParameterIssues` never validates
-  option membership — a renamed *parameter* or a changed option *value* silently does something
-  else. HTTP Request ships `1, 2, 3, 4, 4.1 … 4.5` with `4`–`4.5` sharing one class. This is what
-  makes a breaking change affordable instead of forbidden, and #2 spent its one free pass (every
-  parameter it renamed belonged to an operation that could not succeed).
 - ✅ **OWNER-6 · CLOSED — the node is findable again**, by static `resource`/`operation` options
   generated from `modes.ts`, each carrying an `action`. Session 0001, PR #2. *Carried forward:* a
   static list cannot be filtered by the credential, so a Gateway-only credential sees hub operations
@@ -137,6 +131,16 @@ and silently does nothing. `docker restart` is the only container verb allowed o
   built inside the publishing job by `prepublishOnly`, so an install script can still act before the
   compiler. What changed is that the set is now fixed and auditable rather than resolved afresh on
   every publish — and the `npm-publish` environment puts a human in front of it. Filed as **BL-18**.
+- ✅ **OWNER-3 · The node is a `VersionedNodeType`.** Structure only: one version, `1`, no behaviour
+  change. `getNodeType(1)` resolves, `typeVersion: 1` still runs saved workflows (both demo
+  workflows re-run green on the bench), and the panel is unchanged — 64 actions, icon and categories
+  identical before and after. A version 2 can now be added **beside** 1 instead of replacing it.
+  🔴 `nodeVersions` is a map with no fallback: a key that has ever been saved must stay in it.
+
+  No parameters were renamed. Three candidates were examined and none survived: `Dataset` /
+  `Dataset Row` is the owner's vocabulary and was chosen deliberately over the API's "tables";
+  `dataset:list` beside `listSpaces` is consistent with twenty other `list` operations; and
+  `providerOptionsJson` cannot be masked because of an n8n limitation that a rename does not touch.
 
 - ✅ **OWNER-1 · Merged and released.** `0.2.0` is on npm with provenance, verified against the
   downloaded tarball. Session 0002.
