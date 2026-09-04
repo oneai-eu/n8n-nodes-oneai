@@ -23,6 +23,11 @@
 > - **`TODO.md` and `SESSION-HISTORY.md` introduced**, tracked, following the oneglue convention,
 >   with `node-docs` owning them every run. Owner's framing, and it is the right one: `CLAUDE.md`
 >   holds what is always true; state and history belong elsewhere.
+> - 🟢 **The owner ran the demo workflows on the bench and they completed without error.** That
+>   closes the half of the trace a CLI run cannot reach: the node renders in the editor, its
+>   credential is selectable, and it executes from the interface. What it does *not* settle is
+>   BL-3 — whether the individual operations appear as **actions** in the nodes panel — because
+>   opening a saved workflow never exercises the search panel.
 > - 🔴 **"Are the agents up to date?" was answered by auditing, and the answer was no.** Asked
 >   whether everything had landed, a grep found the corrected bench rule in three files — and five
 >   places still carrying the old state: `AGENTS.md` and `node-architect.md` still called OneData

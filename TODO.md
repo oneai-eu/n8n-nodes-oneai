@@ -21,7 +21,9 @@ the colleague's instance was untouched) runs the PR #3 build as the community pa
 `@oneai-eu/n8n-nodes-oneai`, marked `0.1.9-pr3` so it cannot be mistaken for the npm release.
 Credential *OneAI devtest (bench, 2026-09-04)* and three demo workflows (`OneAI · 1/2/3`) are in the
 owner's personal project; the demo dataset is the `oneData` space **n8n Demo Data**, table
-`contacts`. Verified by a real run: 5 items in, 5 rows landed, `age` a number.
+`contacts`. Verified by a real run: 5 items in, 5 rows landed, `age` a number. 🟢 **The owner opened and ran the
+demo workflows in the UI on 2026-09-04 — they completed without error**, which proves the node
+renders, its credential is selectable and it executes from the interface, not only from the CLI.
 **Rollback:** in `/home/node/.n8n/nodes`, `npm install @oneai-eu/n8n-nodes-oneai@0.1.9`, then
 `docker restart oneai-devtest-n8n`.
 
