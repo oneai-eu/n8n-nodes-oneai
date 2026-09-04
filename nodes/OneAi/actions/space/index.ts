@@ -8,12 +8,16 @@ import * as deleteFile from './deleteFile.operation';
 import * as downloadFile from './downloadFile.operation';
 import * as embedFiles from './embedFiles.operation';
 import * as get from './get.operation';
+import * as getExtractedText from './getExtractedText.operation';
+import * as getFileStats from './getFileStats.operation';
 import * as list from './list.operation';
 import * as listFiles from './listFiles.operation';
+import * as listFolder from './listFolder.operation';
 import * as listTeams from './listTeams.operation';
 import * as listUsers from './listUsers.operation';
 import * as removeTeam from './removeTeam.operation';
 import * as removeUser from './removeUser.operation';
+import * as renameFile from './renameFile.operation';
 import * as sync from './sync.operation';
 import * as transferFile from './transferFile.operation';
 import * as uploadFile from './uploadFile.operation';
@@ -27,12 +31,16 @@ export {
 	downloadFile,
 	embedFiles,
 	get,
+	getExtractedText,
+	getFileStats,
 	list,
 	listFiles,
+	listFolder,
 	listTeams,
 	listUsers,
 	removeTeam,
 	removeUser,
+	renameFile,
 	sync,
 	transferFile,
 	uploadFile,
@@ -47,12 +55,16 @@ export const description: INodeProperties[] = [
 	...downloadFile.description,
 	...embedFiles.description,
 	...get.description,
+	...getExtractedText.description,
+	...getFileStats.description,
 	...list.description,
 	...listFiles.description,
+	...listFolder.description,
 	...listTeams.description,
 	...listUsers.description,
 	...removeTeam.description,
 	...removeUser.description,
+	...renameFile.description,
 	...sync.description,
 	...transferFile.description,
 	...uploadFile.description,

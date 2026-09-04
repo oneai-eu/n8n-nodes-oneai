@@ -359,11 +359,20 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						case 'get':
 							responseData = await space.get.execute.call(this, i);
 							break;
+						case 'getExtractedText':
+							responseData = await space.getExtractedText.execute.call(this, i);
+							break;
+						case 'getFileStats':
+							responseData = await space.getFileStats.execute.call(this, i);
+							break;
 						case 'list':
 							responseData = await space.list.execute.call(this, i);
 							break;
 						case 'listFiles':
 							responseData = await space.listFiles.execute.call(this, i);
+							break;
+						case 'listFolder':
+							responseData = await space.listFolder.execute.call(this, i);
 							break;
 						case 'listTeams':
 							responseData = await space.listTeams.execute.call(this, i);
@@ -376,6 +385,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 							break;
 						case 'removeUser':
 							responseData = await space.removeUser.execute.call(this, i);
+							break;
+						case 'renameFile':
+							responseData = await space.renameFile.execute.call(this, i);
 							break;
 						case 'sync':
 							responseData = await space.sync.execute.call(this, i);
