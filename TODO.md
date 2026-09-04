@@ -50,10 +50,6 @@ and silently does nothing. `docker restart` is the only container verb allowed o
 
 ## ▶ Needs the owner — blocking nothing, but nobody else can rule
 
-- **OWNER-1 · Merge order for #2 and #3, and then the release.** #3 is stacked on #2 and carries the
-  documentation for **both**. 🔴 Do not cut a release from #2 alone: its README still lists the
-  `Project > Create` and `Project > Delete` operations that same PR removes. Either take both, or ask
-  for the documentation commit to be split.
 - **OWNER-2 · `main` has no branch protection and no rulesets, and five collaborators hold
   admin + push.** Publishing is triggered by *creating a GitHub release*, authenticated by OIDC
   trusted publishing — so there is **no token to revoke** and the entire control surface is who may
@@ -65,11 +61,6 @@ and silently does nothing. `docker restart` is the only container verb allowed o
   else. HTTP Request ships `1, 2, 3, 4, 4.1 … 4.5` with `4`–`4.5` sharing one class. This is what
   makes a breaking change affordable instead of forbidden, and #2 spent its one free pass (every
   parameter it renamed belonged to an operation that could not succeed).
-- **OWNER-4 · The 29 parked operation files.** Five (`apiKey/*`) call `/api/keys`, now
-  `/api/user-keys`. Nothing dispatches them, every file-counting measure counts them — and they
-  **do ship**: they compile into the tarball as roughly a third of the published JavaScript, so
-  users download and n8n loads code that can never run. They have been dead through at least two
-  releases. Recommendation: **delete them** — git history keeps them.
 - **OWNER-5 · The publish path is not reproducible, and it is the only gate.** No committed
   lockfile (`.gitignore`d), CI runs `npm install`, plus `npm install -g npm@latest` and floating
   `actions/*@v4`. Measured: five declared devDependencies resolve to **527 packages**, of which
@@ -109,10 +100,6 @@ and silently does nothing. `docker restart` is the only container verb allowed o
   on evidence: no node in `nodes-base` carries the `__CUSTOM_API_CALL__` sentinel, n8n's own
   tooling filters it out, and it is a feature of the *declarative* node style, which this node is
   not. Reopen only with a shape that has precedent. *(P3)*
-- **BL-11 · `panel-check.mjs` has no operation-count floor tied to the router.** Removing an
-  `action` key outright (rather than emptying it) drops the count 62 → 61 and the checker reports
-  clean; `tsc` catches it only because `OperationDefinition` requires the field, which is coverage by
-  accident. It should assert its count against the router's, the way `drift-check` does. *(P2)*
 - **BL-12 · `paired-item-check.mjs` flags `pairedItem` in a type annotation** as `[R6] names
   'number', which nothing in this file binds`. It fails closed, so it is safe — but it would block a
   legitimate refactor that types the emitted row shape. *(P3)*
@@ -135,9 +122,6 @@ and silently does nothing. `docker restart` is the only container verb allowed o
   own wizard shows once. Both are now documented in the README; a sentence in each field's
   `description` would reach the author who never opens it. Display text only, so safe on
   `typeVersion: 1`. *(P3)*
-- **BL-17 · The bench's disk copy claims a version it is not.** `installed_packages` says
-  `0.1.9-pr3`, the package's own `package.json` in the container says `0.1.9`. Whoever deploys next
-  should mark the disk copy too, or drop a `README` beside it in `/home/node/.n8n/nodes`. *(P3)*
 
 ## ▶ For the oneAI API owners — not ours to fix
 
@@ -151,6 +135,17 @@ and silently does nothing. `docker restart` is the only container verb allowed o
   dropdown text and the README now say what it does. Session 0002.
 
 ## ▶ Closed
+
+- ✅ **OWNER-1 · Merged and released.** `0.2.0` is on npm with provenance, verified against the
+  downloaded tarball. Session 0002.
+- ✅ **OWNER-4 · The parked files are gone, and one of them was not dead.** 27 files removed;
+  `auditLog` was **wired up instead**, because its endpoints are alive in the spec and `CLAUDE.md`
+  records Audit Logs as owner-named core surface. Its request shapes had never been checked — the
+  drift check passed them on the first run. 🔴 **Zero parked files for the first time**: every file
+  in `actions/` is now reachable, and the package drops from 118 to 85 JavaScript files.
+- ✅ **BL-11 · `panel-check` now counts operations a second way** and compares, so removing an
+  `action` key is a finding rather than a silently smaller number. Session 0002.
+- ✅ **BL-17 · The bench runs the published `0.2.0`** from npm, and `installed_packages` says so.
 
 - ✅ **The README documented 57 operations, omitted five that ship, and denied two of them in
   prose** — the release blocker. Regenerated from `modes.ts` and verified mechanically.

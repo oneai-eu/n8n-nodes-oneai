@@ -3,6 +3,7 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import * as artifact from './artifact';
 import * as auth from './misc';
+import * as auditLog from './auditLog';
 import * as chat from './chat';
 import * as ai from './ai';
 import * as compliancePattern from './compliancePattern';
@@ -119,6 +120,23 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 							break;
 						case 'listBySpace':
 							responseData = await artifact.listBySpace.execute.call(this, i);
+							break;
+						default:
+							throw new NodeOperationError(
+								this.getNode(),
+								`Unknown operation: ${operation}`,
+								{ itemIndex: i },
+							);
+					}
+					break;
+
+				case 'auditLog':
+					switch (operation) {
+						case 'get':
+							responseData = await auditLog.get.execute.call(this, i);
+							break;
+						case 'list':
+							responseData = await auditLog.list.execute.call(this, i);
 							break;
 						default:
 							throw new NodeOperationError(

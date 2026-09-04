@@ -9,6 +9,7 @@ import type {
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import * as artifact from './actions/artifact';
+import * as auditLog from './actions/auditLog';
 import * as chat from './actions/chat';
 import * as ai from './actions/ai';
 import * as compliancePattern from './actions/compliancePattern';
@@ -46,6 +47,7 @@ export class OneAi implements INodeType {
 			...operationProperties,
 			...artifact.description,
 			...checkAuth.description,
+			...auditLog.description,
 			...chat.description,
 			...ai.description,
 			...compliancePattern.description,
