@@ -24,7 +24,7 @@ two known causes, and it is not a substitute for someone typing the name into th
 2.32.7 — database dumped first to `/root/n8n-bench-backup/` on the host, service updated by name so
 the colleague's instance was untouched) runs the PR #3 build as the community package
 `@oneai-eu/n8n-nodes-oneai`, marked `0.1.9-pr3` so it cannot be mistaken for the npm release.
-Credential *OneAI devtest (bench, 2026-09-04)* and three demo workflows (`OneAI · 1/2/3`) are in the
+Credential *oneAI devtest (bench, 2026-09-04)* and three demo workflows (`oneAI · 1/2/3`) are in the
 owner's personal project; the demo dataset is the `oneData` space **n8n Demo Data**, table
 `contacts`. Verified by a real run: 5 items in, 5 rows landed, `age` a number. 🟢 **The owner opened and ran the
 demo workflows in the UI on 2026-09-04 — they completed without error**, which proves the node
@@ -102,13 +102,13 @@ renders, its credential is selectable and it executes from the interface, not on
   authority — but it is inconsistent. *(P3)*
 - **BL-10 · Implement "Custom API Call" instead of refusing it.** n8n injects the option for any
   node with static options and a credential; we answer with a clear refusal. Making it work would
-  give workflow authors any OneAI endpoint the node does not expose, using the credential they
+  give workflow authors any oneAI endpoint the node does not expose, using the credential they
   already have. *(P3)*
 - **BL-9 · Gateway-plan behaviour is unproven.** Both key classes were exercised, but the `oai-gk_`
   key was minted against a `team`-plan org, so prefix routing is proven and `plan-gate` behaviour is
   not. Needs a genuine Gateway-plan org on devtest. *(P3)*
 
-## ▶ For the OneAI API owners — not ours to fix
+## ▶ For the oneAI API owners — not ours to fix
 
 - **BF-1 · `GET /api/spaces/{spaceId}/files/download` returns HTTP 500 for a missing file**, not
   404, with `{"status":500,"errorMessage":"Internal Server Error."}`. A missing file is a client

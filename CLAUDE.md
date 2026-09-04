@@ -1,19 +1,19 @@
 # n8n-nodes-oneai — Claude Code Instructions
 
-The OneAI community node for n8n. **A published, certified npm package** that other people install
+The oneAI community node for n8n. **A published, certified npm package** that other people install
 into their own n8n instances.
 
-🔴 **Do not carry OneAI's rules over.** This repository looks like the OneAI platform repository and
+🔴 **Do not carry oneAI's rules over.** This repository looks like the oneAI platform repository and
 almost every hard rule is different. The table below is not trivia — it is the list of habits that
 will do the wrong thing here.
 
-| | OneAI platform | **here** |
+| | oneAI platform | **here** |
 |---|---|---|
 | Host | Forgejo — **`gh` does not work** | **GitHub — `gh` is the right tool** |
 | Draft PRs | a `WIP: ` title prefix by convention | native: `gh pr create --draft`, `gh pr ready` |
 | Gates | `pnpm format && check && typecheck`, vitest | **`n8n-node lint` / `n8n-node build`** |
 | Blast radius | internal deployments | 🔴 **the public npm registry** |
-| Type source | `src/openapi.gen.ts` in-repo | OneAI's `openapi.json` — see below |
+| Type source | `src/openapi.gen.ts` in-repo | oneAI's `openapi.json` — see below |
 | Threat model | tenants, multi-tenancy, confirmation bypass | **workflow authors and instance operators** |
 
 ---
@@ -82,7 +82,7 @@ with", no session link) in commits, PR bodies or files.
 | **package version** (whatever `package.json` says) | npm semver, read by the operator who upgrades | **none directly** — the upgrade replaces the code every existing workflow runs |
 | **node `typeVersion`** (`version` in `OneAi.node.ts`) | stamped into every saved workflow node | **everything** — the only thing that pins old behaviour |
 
-Our node declares `version: 1` as a **plain number**, so every OneAI node anyone has ever placed is
+Our node declares `version: 1` as a **plain number**, so every oneAI node anyone has ever placed is
 saved as `typeVersion: 1`. Bumping the package from `0.1.8` to `0.1.9` created no new node version —
 it silently replaced the code behind `typeVersion: 1` on every instance that upgraded.
 
@@ -106,7 +106,7 @@ forbidden.
 
 ---
 
-## Types come from OneAI's OpenAPI spec
+## Types come from oneAI's OpenAPI spec
 
 **Owner/Oli rule: follow the spec's types strictly. No `as any`. Do not reach for `unknown` either —
 derive the real type.**
@@ -123,7 +123,7 @@ elsewhere and a grep for `any` will never find it:
   grep -rn "as any\|: any\b" nodes/ credentials/ --include=*.ts | wc -l   # must stay 0
   ```
 **The spec is now committed** at `openapi/openapi.json` (325 paths / 401 operations) with an
-`openapi/PROVENANCE.md` naming the OneAI commit it was taken from and its SHA-256. Without that
+`openapi/PROVENANCE.md` naming the oneAI commit it was taken from and its SHA-256. Without that
 provenance every future drift report is unfalsifiable — "measured against which checkout?" has no
 answer.
 
@@ -241,7 +241,7 @@ nodes/OneAi/
   transport/index.ts     the single HTTP seam — httpRequestWithAuthentication only
   modes.ts               the resource/operation registry
 credentials/OneAiApi.credentials.ts
-openapi/openapi.json     the committed spec snapshot; PROVENANCE.md names its OneAI commit
+openapi/openapi.json     the committed spec snapshot; PROVENANCE.md names its oneAI commit
 scripts/drift-check.mjs        spec ↔ node surface, on shapes
 scripts/paired-item-check.mjs  every emitted row names the input item it came from
 docs/                    research, findings, orchestration — never shipped
@@ -332,12 +332,12 @@ Both halves are ours, so a trace can be end-to-end and real.
   `docker compose … --remove-orphans` on that host — it deletes containers that are not in the compose file and
   has destroyed n8n there before. `docker restart oneai-devtest-n8n` is allowed and is part of
   deploying; `stop`, `kill` and `rm` are not.
-- OneAI to trace against: **devtest**, the `oneai-devtest` container on the same host, reachable
+- oneAI to trace against: **devtest**, the `oneai-devtest` container on the same host, reachable
   from the n8n container as `http://oneai-devtest:3000`.
 
 **Owner authorisation (2026-09-03):** generate whatever credentials a trace needs on devtest —
 a **user API key** and a **gateway API key**. Both classes matter because they are validated
-differently: `oai_` against the hub via `/api/auth/check`, `oai-gk_` against the OneAI Gateway. A
+differently: `oai_` against the hub via `/api/auth/check`, `oai-gk_` against the oneAI Gateway. A
 trace that exercises one leaves the other unproven.
 
 Credential discipline: never print a key, never let one reach a report, log, fixture or commit.
@@ -359,7 +359,7 @@ of an API. "14% of 409 endpoints" is not a deficiency to close.
 
 The worked example, from Oli, and it is the standard to judge the next feature by: **OneData
 (datasets / tables)** was the most important missing capability, because hundreds of other n8n nodes
-can pull data out of other apps and this node is what lands it in a OneAI dataset. It now ships —
+can pull data out of other apps and this node is what lands it in a oneAI dataset. It now ships —
 resources `dataset` and `datasetRow` — so use it as the shape of a good answer, not as an open item.
 
 Core surface named by the owner: **Chatting (very important)**, Spaces, Datasets, Audit Logs.
@@ -377,7 +377,7 @@ That settles `auth`, `passkeys`, `subscription`/Stripe and `scim` without furthe
 4. Everything else is `INTERPRETED` at best.
 
 🔴 **Read `nodes-base`; never vendor it.** On 2026-09-03 we removed 18 648 lines of third-party
-source from the OneAI repository — four files of n8n node source among them — because foreign code
+source from the oneAI repository — four files of n8n node source among them — because foreign code
 under a foreign licence does not belong in our tree, on a branch or in a PR. Cite it by URL and
 commit; archive anything you need outside the repository.
 

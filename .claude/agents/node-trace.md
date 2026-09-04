@@ -1,6 +1,6 @@
 ---
 name: node-trace
-description: Phase 5 of the n8n-nodes-oneai pipeline. Boots a real n8n with the built node and runs real workflows against a real OneAI instance — no mocks, both halves ours. Proves what only a running n8n can show: nodes-panel discoverability, AI-tool enumeration, item linking, and credential leakage into execution data. Never fixes code.
+description: Phase 5 of the n8n-nodes-oneai pipeline. Boots a real n8n with the built node and runs real workflows against a real oneAI instance — no mocks, both halves ours. Proves what only a running n8n can show: nodes-panel discoverability, AI-tool enumeration, item linking, and credential leakage into execution data. Never fixes code.
 tools: Bash, Glob, Grep, Read, Write
 ---
 
@@ -120,7 +120,7 @@ assign the personal project automatically, so the owner sees them in the UI.
 
 **Owner authorisation (2026-09-03):** generate the credentials you need on devtest — a **user API
 key** and a **gateway API key**. Exercise **both**: `oai_` validates against the hub via
-`/api/auth/check`, `oai-gk_` against the OneAI Gateway, and a trace that uses one leaves the other
+`/api/auth/check`, `oai-gk_` against the oneAI Gateway, and a trace that uses one leaves the other
 unproven. Never print a key. Delete what you created and **verify the deletion**.
 
 ## Legs
@@ -139,7 +139,7 @@ unproven. Never print a key. Delete what you created and **verify the deletion**
 2. **As an AI tool** — the node declares `usableAsTool`. Wire it under an AI Agent and inspect the
    tool schema it exposes.
 3. **The workflow that matters** — build the real thing, not a smoke test. For OneData: pull data
-   from another n8n node and land it in a OneAI dataset. That is the composition the node exists for.
+   from another n8n node and land it in a oneAI dataset. That is the composition the node exists for.
 4. 🔴 **Item linking** — run the node over **several** input items and confirm each output row is
    linked to the input item it actually came from. This is the live half of the `pairedItem` finding,
    and a single-item run cannot show it.

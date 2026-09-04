@@ -5,7 +5,7 @@ can say *drifted from what*. Regenerate the snapshot and update every field belo
 
 | | |
 |---|---|
-| **Source repository** | OneAI platform (`forgejo.infra.oneai.eu/oneai/oneai`) |
+| **Source repository** | oneAI platform (`forgejo.infra.oneai.eu/oneai/oneai`) |
 | **Git ref** | `origin/main` |
 | **Commit** | `f2b70d0c8f28fab490e2db034609996cb8cfe2e6` |
 | **Commit date** | 2026-09-03T15:18:59+00:00 |
@@ -19,7 +19,7 @@ can say *drifted from what*. Regenerate the snapshot and update every field belo
 
 ## How this snapshot was taken, and why not the obvious way
 
-The machine's OneAI checkout at `/root/oneai` was **not** usable as the source. At the time of the
+The machine's oneAI checkout at `/root/oneai` was **not** usable as the source. At the time of the
 snapshot it was parked on an unrelated branch (`feat/invoke-api-governance`), **92 commits behind
 `origin/main`**, with 155 dirty tracked files under `src/api/`. A spec generated from it would have
 described neither `main` nor any released state — a baseline that looks authoritative and is not.

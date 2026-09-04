@@ -1153,7 +1153,7 @@ function main() {
 		);
 	} else {
 		console.log('');
-		console.log('OneAI n8n node - pairedItem lineage check');
+		console.log('oneAI n8n node - pairedItem lineage check');
 		console.log('='.repeat(72));
 		console.log(
 			`  scanned     ${files.length} operation file(s) (${dispatchedPaths.size} dispatched, ${files.length - dispatchedPaths.size} parked) + router.ts`,

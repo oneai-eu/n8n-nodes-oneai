@@ -20,7 +20,7 @@ first pass of this analysis wrongly reported `oai_` as absent because of it. npm
 🔴 **There is no `openapi.json` in this repository.** The type source the rule names does not exist
 here. Today an author would have to reach into a checkout of `/root/oneai` and generate it — so
 "follow the types" is a review instruction that nothing can enforce, and which silently depends on
-whichever OneAI checkout happened to be on the machine.
+whichever oneAI checkout happened to be on the machine.
 
 🟡 **`IDataObject` appears 31 times**, and it is how untyped payloads enter a codebase that contains
 no `any`. It is n8n's own loose record type, so it cannot be banned outright — but it is the actual
@@ -29,7 +29,7 @@ gap the rule is aiming at, and a rule that greps for `any` will never see it.
 **What would make the rule real:** commit a spec snapshot *and* generate types from it into the
 repo, the way `/root/oneai` generates `src/openapi.gen.ts`. "Follow the types" then becomes a
 property the compiler enforces on every build, instead of a habit a reviewer has to police. It also
-makes drift **diffable over time**, and removes the "measured against which OneAI checkout?"
+makes drift **diffable over time**, and removes the "measured against which oneAI checkout?"
 ambiguity that would otherwise poison every drift report.
 
 **Note on `unknown`:** normally `unknown` is the *safe* alternative to `any`, so "avoid unknown"
@@ -39,10 +39,10 @@ either escape hatch.
 
 ## 2. Draft PRs only, English, no Claude additions, never push directly
 
-Same discipline as the OneAI repository, **different mechanics**, and the difference will trip an
-agent that carries OneAI habits over:
+Same discipline as the oneAI repository, **different mechanics**, and the difference will trip an
+agent that carries oneAI habits over:
 
-| | OneAI (Forgejo) | this repo (GitHub) |
+| | oneAI (Forgejo) | this repo (GitHub) |
 |---|---|---|
 | PR tooling | REST API; **`gh` does not work** | 🔴 **`gh` is the right tool** |
 | draft state | a `WIP: ` title prefix by convention | native drafts: `gh pr create --draft`, `gh pr ready` |
@@ -57,7 +57,7 @@ n8n's documentation > everything else.** Shipped code beats prose because it is 
 actually maintains.
 
 🔴 **Read it; do not vendor it.** On 2026-09-03 we removed 18 648 lines of third-party source from
-the OneAI repository — including four files of n8n node source — because foreign code under a
+the oneAI repository — including four files of n8n node source — because foreign code under a
 foreign licence does not belong in our tree, on a branch or otherwise. The agent set must cite
 `nodes-base` by URL and commit, and archive anything it needs **outside** the repository. Making the
 same mistake here, two days after fixing it there, would be hard to defend.
@@ -104,7 +104,7 @@ owner-only:
 
 The worked example is the argument: **OneData (datasets / tables)** is named the most important new
 feature *because* hundreds of other n8n nodes can pull data from other apps, and this node is what
-lands it in a OneAI dataset. The node's worth is as a junction in a graph, not as a mirror of an API.
+lands it in a oneAI dataset. The node's worth is as a junction in a graph, not as a mirror of an API.
 
 That reframes the whole exercise. "14 % of 409 endpoints" is not a deficiency to close; the question
 for each endpoint is whether it makes a *workflow* possible that was not possible before.

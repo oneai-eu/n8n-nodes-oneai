@@ -1,7 +1,7 @@
 import type { INodePropertyOptions } from 'n8n-workflow';
 
 /**
- * The storage providers a space can have, as OneAI's API spells them.
+ * The storage providers a space can have, as oneAI's API spells them.
  *
  * This list is shared by `space:create` (which sends `provider` in the body) and `space:list`
  * (which sends it as a query filter). Both used to offer `local`, `google`, `onedrive` and
@@ -24,7 +24,7 @@ export const PROVIDER_OPTIONS: INodePropertyOptions[] = [
 	{ name: 'Lexoffice', value: 'lexoffice' },
 	{ name: 'MCP', value: 'mcp' },
 	{ name: 'N8N', value: 'n8n' },
-	{ name: 'OneAI Storage', value: 'seaweed' },
+	{ name: 'oneAI Storage', value: 'seaweed' },
 	{ name: 'OneData (Data Tables)', value: 'oneData' },
 	{ name: 'OneDrive or SharePoint', value: 'oneDrive' },
 	{ name: 'OneGlue', value: 'oneglue' },

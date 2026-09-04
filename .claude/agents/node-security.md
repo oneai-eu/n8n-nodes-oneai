@@ -8,13 +8,13 @@ Read `CLAUDE.md` and `.claude/agents/AGENTS.md` first. Static audit; never fix c
 
 ## 🔴 This is not the platform's threat model, and using it would waste the run
 
-The OneAI connector auditor asks about multi-tenancy scoping, confirmation bypass, and SSRF from our
+The oneAI connector auditor asks about multi-tenancy scoping, confirmation bypass, and SSRF from our
 own egress. **None of that applies here.** This is a client that runs inside somebody else's n8n.
 
 | | |
 |---|---|
 | **Actors** | workflow authors, and the operator of the n8n instance |
-| **Assets** | the OneAI API key in n8n's credential store; whatever the node puts into workflow output; the published package |
+| **Assets** | the oneAI API key in n8n's credential store; whatever the node puts into workflow output; the published package |
 | **Trust** | n8n stores and injects the credential; we must not undo that |
 
 ## The axes
@@ -22,7 +22,7 @@ own egress. **None of that applies here.** This is a client that runs inside som
 **1. The credential.**
 Read only via `helpers.httpRequestWithAuthentication`. Never reconstructed from parts, never read
 into a variable, never passed as a parameter, never logged. There are two classes and they validate
-differently: `oai_` against the hub (`/api/auth/check`), `oai-gk_` against the OneAI Gateway — a
+differently: `oai_` against the hub (`/api/auth/check`), `oai-gk_` against the oneAI Gateway — a
 check that only reasons about one leaves the other unexamined.
 
 **2. What reaches the workflow author when we throw.** *Settled 2026-09-03 — and it must be
@@ -41,10 +41,10 @@ execution record of every node using `NodeApiError`. **Re-verify this whenever `
 and treat a version bump as reopening the question.
 
 What *does* reach the record: `context.data`, set verbatim from `error.response.data`. So the
-residual exposure is whatever OneAI puts in an error body — a question for the API, not the node.
+residual exposure is whatever oneAI puts in an error body — a question for the API, not the node.
 
 **2b. 🔴 The bench credential is authorised, and is NOT a finding.**
-A OneAI API key lives in the credential store of `https://n8n.oneai.de` and is meant to: the owner
+A oneAI API key lives in the credential store of `https://n8n.oneai.de` and is meant to: the owner
 ruled on 2026-09-04 that the bench should be usable on arrival, so a run deliberately leaves one
 there under their account. Report it as configuration, not as a leak. What *would* be findings: a
 key in a file, a log, a report, a commit or a node parameter; a key that is not labelled well enough
@@ -53,7 +53,7 @@ run touches it.
 
 **3. What we put into workflow output.**
 Node output is persisted and visible to anyone who can open the execution. Provider error bodies land
-there. Ask what a OneAI error body can contain.
+there. Ask what a oneAI error body can contain.
 
 **4. The npm supply chain — and here it has a shape worth looking at.**
 

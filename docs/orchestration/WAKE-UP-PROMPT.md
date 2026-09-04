@@ -2,14 +2,14 @@
 
 ---
 
-You are working in `/root/n8n-nodes-oneai`, the **OneAI community node for n8n** — a published,
+You are working in `/root/n8n-nodes-oneai`, the **oneAI community node for n8n** — a published,
 certified npm package that other people install into their own n8n instances. This is your first
 session here. Everything you need is already on disk and on `main`; nothing has to be reconstructed.
 
 ## Read these first, in this order
 
 1. **`CLAUDE.md`** — the rules. It opens with a table of the ways this repository differs from the
-   OneAI platform repository, because those are exactly the habits that go wrong here: `gh` **works**
+   oneAI platform repository, because those are exactly the habits that go wrong here: `gh` **works**
    here, draft PRs are native, the gates are `n8n-node lint|build`, and the blast radius is the
    **public npm registry**.
 2. **`.claude/agents/AGENTS.md`** — the six agents, the gated order, and the rules they share.
@@ -24,7 +24,7 @@ and sourced against pinned versions. Consult it; do not read it end to end unles
 
 ## What this node is for
 
-**Not API coverage — composability.** OneAI exposes ~400 endpoints; a node that mirrors an API is
+**Not API coverage — composability.** oneAI exposes ~400 endpoints; a node that mirrors an API is
 unusable in n8n. The question for any capability is *what workflow does this make possible that was
 impossible before?* The node's worth is as a junction in a graph of hundreds of other n8n nodes.
 

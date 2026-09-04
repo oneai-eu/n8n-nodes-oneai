@@ -169,7 +169,7 @@ if (AS_JSON) {
 	);
 } else {
 	console.log('');
-	console.log('OneAI n8n node - nodes-panel discoverability check');
+	console.log('oneAI n8n node - nodes-panel discoverability check');
 	console.log('='.repeat(72));
 	console.log(`  read        ${resources} resource(s), ${opEntries.length} operation(s) with an action string`);
 	console.log(`  codex       categories = ${codex ? JSON.stringify(codex.categories) : '(unreadable)'}`);

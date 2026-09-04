@@ -114,6 +114,7 @@ export const OPERATIONS: Record<string, OperationDefinition[]> = {
 		{ name: 'Export CSV', value: 'exportCsv', description: 'Export a whole dataset as a CSV file', action: 'Export a dataset as CSV', gateway: false },
 		{ name: 'Import CSV', value: 'importCsv', description: 'Bulk-append the rows of a CSV file to a dataset', action: 'Import a CSV into a dataset', gateway: false },
 		{ name: 'List', value: 'list', description: 'List the datasets in a space with their columns and row counts', action: 'List datasets in space', gateway: false },
+		{ name: 'List Spaces', value: 'listSpaces', description: 'List the spaces that hold datasets, to get a space ID for the other dataset operations', action: 'List dataset spaces', gateway: false },
 		{ name: 'Update Schema', value: 'updateSchema', description: "Add, drop or rename a dataset's columns", action: 'Update a dataset schema', gateway: false },
 	],
 	datasetRow: [
@@ -126,7 +127,7 @@ export const OPERATIONS: Record<string, OperationDefinition[]> = {
 	miscellaneous: [
 		{ name: 'Check Authentication', value: 'checkAuth', description: 'Check the authenticated user and return their details', action: 'Check authenticated user', gateway: true },
 	],
-	// `Create` and `Delete` were removed: OneAI no longer serves `POST /api/projects` or
+	// `Create` and `Delete` were removed: oneAI no longer serves `POST /api/projects` or
 	// `DELETE /api/projects/{projectId}`. Projects are now created from a template
 	// (`POST /api/projects/templates/{templateId}/instantiate`) and retired by archiving them
 	// (`POST /api/projects/bulk`). Neither is a drop-in replacement, so neither is guessed at

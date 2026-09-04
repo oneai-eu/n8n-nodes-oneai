@@ -192,6 +192,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						case 'list':
 							responseData = await dataset.list.execute.call(this, i);
 							break;
+						case 'listSpaces':
+							responseData = await dataset.listSpaces.execute.call(this, i);
+							break;
 						case 'updateSchema':
 							responseData = await dataset.updateSchema.execute.call(this, i);
 							break;

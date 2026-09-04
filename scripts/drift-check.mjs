@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * drift-check — the standing comparison between OneAI's API and what this node actually ships.
+ * drift-check — the standing comparison between oneAI's API and what this node actually ships.
  *
  * Usage:
  *   node scripts/drift-check.mjs            human-readable report
@@ -832,7 +832,7 @@ function loadSpec() {
 	if (!existsSync(SPEC_FILE)) {
 		fatal(
 			`no spec snapshot at ${SPEC_FILE}\n` +
-			'Generate it from a clean OneAI checkout with `npx tsx src/scripts/update-openapi.ts`\n' +
+			'Generate it from a clean oneAI checkout with `npx tsx src/scripts/update-openapi.ts`\n' +
 			'and record the commit it came from in openapi/PROVENANCE.md.',
 		);
 	}
@@ -1240,7 +1240,7 @@ function main() {
 		for (const f of opFindings) findings.push({ ...f, resource: s.resource, operation: s.operation, file: s.file });
 	}
 
-	// ---- tier 2: what OneAI exposes that we do not call --------------------
+	// ---- tier 2: what oneAI exposes that we do not call --------------------
 	const uncalled = [];
 	for (const [key, entries] of specIndex) {
 		if (calledKeys.has(key)) continue;
@@ -1321,7 +1321,7 @@ function main() {
 	// ---- human report ------------------------------------------------------
 	const L = (s = '') => process.stdout.write(s + '\n');
 	L();
-	L('OneAI n8n node - API drift check');
+	L('oneAI n8n node - API drift check');
 	L('='.repeat(72));
 	L(`  spec        openapi/openapi.json - ${specPathCount} paths, ${specOpCount} operations`);
 	L(`              (provenance: openapi/PROVENANCE.md)`);
@@ -1365,7 +1365,7 @@ function main() {
 		+ ` [${shapeStats.bodiesCompared + shapeStats.bodiesOpaque + shapeStats.bodiesNoneNeeded} of ${totalRequests} calls accounted]`);
 	L();
 
-	L('TIER 2 - endpoints OneAI exposes that this node does not call');
+	L('TIER 2 - endpoints oneAI exposes that this node does not call');
 	L('-'.repeat(72));
 	L('  This is an input to a product decision, not a to-do list. The measure of this node is');
 	L('  what a workflow author can compose with the rest of n8n, not how much of the API it');

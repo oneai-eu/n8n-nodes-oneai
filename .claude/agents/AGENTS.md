@@ -3,7 +3,7 @@
 Six agents, a gated order, and the rules all of them share. Read `CLAUDE.md` first — it holds the
 facts; this file holds the process.
 
-🔴 **This is not the OneAI connector pipeline with the names changed.** Two things make it a
+🔴 **This is not the oneAI connector pipeline with the names changed.** Two things make it a
 different machine, and copying across the difference is the failure mode to guard against:
 
 - **The API is ours.** The connector pipeline's expensive half exists because a third party owns the
@@ -25,7 +25,7 @@ different machine, and copying across the difference is the failure mode to guar
  2  node-implementer         ── one operation family per run
  3  node-validator  ┐
  4  node-security   ┘        ── in parallel
- 5  node-trace               ── a real workflow, a real n8n, real OneAI
+ 5  node-trace               ── a real workflow, a real n8n, real oneAI
  6  node-docs                ── README, codex, the published surface
 ```
 
@@ -137,7 +137,7 @@ Not: multi-tenancy, confirmation gates, our own egress. Those are the platform's
 
 🔴 **The run ends with the node deployed on `n8n.oneai.de`** — the bench exists so the owner can
 open it the next morning and try the thing. Replace the installed community package there and
-restart it; production is `n8n.oneai.eu` and the `-ralf` container is a colleague's. OneAI to trace
+restart it; production is `n8n.oneai.eu` and the `-ralf` container is a colleague's. oneAI to trace
 against is **devtest** on the same host.
 
 On the bench, `docker restart` is allowed and is part of deploying; `stop`, `kill` and `rm` are not.
@@ -171,6 +171,6 @@ Stop and ask rather than proceed when:
 - selection is unresolved — that is the owner's ruling, not an agent's
 - a change would **rename an operation or a parameter** on `typeVersion: 1`. A renamed parameter fails **silently**; this is the one class where guessing is worst
 - the drift check's vacuity guard fires — the extractor is broken, and any number it prints is fiction
-- a trace cannot reach a real n8n or a real OneAI. Report `NOT-REACHED`; do not simulate
+- a trace cannot reach a real n8n or a real oneAI. Report `NOT-REACHED`; do not simulate
 - an action would touch the registry, `main`, or a colleague's container
 - 🔴 a change would alter `.github/workflows/publish.yml`, `package.json`'s `version`, or add a lockfile. Each of those changes **the publish path itself**, which only the owner rules — and note that the path today runs no tests, no drift check and no `@n8n/scan-community-package`, with `npm install` against **no committed lockfile**, so `dist/` is built from whatever resolved in that job

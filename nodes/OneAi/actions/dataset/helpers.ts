@@ -44,6 +44,37 @@ export type TableSummary = {
 	embeddingStatus: string | null;
 };
 
+/**
+ * One entry of `GET /api/spaces` → `spaces[]`, as `dataset:listSpaces` sees it.
+ *
+ * `provider` is the literal `'oneData'` rather than the spec's twenty-value enum because that
+ * operation pins `provider=oneData` in the query - a space of any other provider cannot come back
+ * through it. `type` is the spec's full enum, since nothing constrains it.
+ *
+ * The identifier is `id`. That was in doubt for one revision because the orchestration prompt
+ * quoted a "live capture" showing `spaceId` - the capture was made with a script that read
+ * `spaceId || id`, so it could never have told the two apart. Settled against the instance by
+ * reading the raw keys: `id, name, canWrite, isSpaceAdmin, provider, type, dataSpaceId, isActive,
+ * archived, createdAt, updatedAt`. The spec was right and the prompt was wrong.
+ *
+ * 🔴 Do not reach for `dataSpaceId`. It looks like the OneData identifier and is `null` on a real
+ * oneData space; `id` is the value the `/api/spaces/{spaceId}/tables` endpoints accept, verified
+ * against a space whose tables were created through it.
+ */
+export type DatasetSpace = {
+	id: string;
+	name: string;
+	canWrite: boolean;
+	isSpaceAdmin: boolean;
+	provider: 'oneData';
+	type: 'data' | 'integration' | 'project' | 'dataset';
+	dataSpaceId: string | null;
+	isActive: boolean;
+	archived: boolean;
+	createdAt: string;
+	updatedAt: string;
+};
+
 /** `POST /api/spaces/{spaceId}/tables` → 200. */
 export type CreateTableResponse = {
 	tableId: string;
@@ -164,6 +195,23 @@ export function splitList(raw: string): string[] {
 export function readTables(response: JsonObject): TableSummary[] {
 	const tables = response.tables;
 	return Array.isArray(tables) ? (tables as TableSummary[]) : [];
+}
+
+/** `GET /api/spaces` → the `spaces` array, typed. */
+export function readSpaces(response: JsonObject): DatasetSpace[] {
+	const spaces = response.spaces;
+	return Array.isArray(spaces) ? (spaces as DatasetSpace[]) : [];
+}
+
+/**
+ * The identifier to hand downstream.
+ *
+ * The API calls it `id`; every other dataset operation asks the author for a `Space ID`. So
+ * `listSpaces` emits a top-level `spaceId` as well, and `{{ $json.spaceId }}` feeds straight into
+ * `dataset:list` without the author having to know the two names are the same thing.
+ */
+export function readSpaceId(space: DatasetSpace): string {
+	return space.id;
 }
 
 /**

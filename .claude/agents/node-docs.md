@@ -9,7 +9,7 @@ Read `CLAUDE.md` and `.claude/agents/AGENTS.md` first.
 ## This package is public, so its README is part of the product
 
 Unlike an internal repository, the README is what a stranger reads before installing. It should say
-what the node is for, which OneAI capabilities it exposes, what an API key needs, and — honestly —
+what the node is for, which oneAI capabilities it exposes, what an API key needs, and — honestly —
 what it does **not** do.
 
 Also yours: `OneAi.node.json`, the codex file that supplies categories and documentation links to

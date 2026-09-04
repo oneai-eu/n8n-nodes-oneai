@@ -59,7 +59,7 @@ commit → `node-trace` → `node-docs` → draft PR.
 
 ## Environment
 
-- devtest is `adminui-dev`; the OneAI hub is the `oneai-devtest` container on the same machine.
+- devtest is `adminui-dev`; the oneAI hub is the `oneai-devtest` container on the same machine.
 - 🔴 **`n8n.oneai.de` is the TEST BENCH and the run deploys to it** (owner ruling 2026-09-04). It
   exists so the owner can open the node the next morning and use it. Container
   `oneai-devtest-n8n`, which already carries this package as an installed community package.
@@ -77,7 +77,7 @@ commit → `node-trace` → `node-docs` → draft PR.
 - [ ] drift check clean on tiers 1 and 3 (**path** and **shape**); tier 2 is information, not a failure
 - [ ] shipped operation set is a **superset of the last release**, or the break is owner-ruled
 - [ ] mutations counted, shortfalls explained
-- [ ] traced on a real n8n against real OneAI, with what was **NOT-REACHED** named
+- [ ] traced on a real n8n against real oneAI, with what was **NOT-REACHED** named
 - [ ] 🔴 **deployed on `n8n.oneai.de`**, version-marked so it cannot be mistaken for the release,
       with a credential and a demo workflow the owner can open — and the rollback written down
 - [ ] `TODO.md` and `SESSION-HISTORY.md` updated at the END of the run
