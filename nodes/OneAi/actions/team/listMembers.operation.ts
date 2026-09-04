@@ -93,7 +93,7 @@ export async function execute(
 	if (returnAll) {
 		const members = await oneAiApiRequestAllItems.call(this, {
 			method: 'GET',
-			endpoint: `/api/teams/${teamId}/members`,
+			endpoint: `/api/teams/${encodeURIComponent(teamId)}/members`,
 			qs,
 			itemsKey: 'members',
 		});
@@ -109,7 +109,7 @@ export async function execute(
 
 	const response = await oneAiApiRequest.call(this, {
 		method: 'GET',
-		endpoint: `/api/teams/${teamId}/members`,
+		endpoint: `/api/teams/${encodeURIComponent(teamId)}/members`,
 		qs,
 	});
 

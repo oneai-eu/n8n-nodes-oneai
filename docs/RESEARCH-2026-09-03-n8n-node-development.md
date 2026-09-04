@@ -70,7 +70,7 @@ HEAD (local main)   629351c  "Update README…"                      → v0.1.8,
 origin/main         aef3e2e  "Fix lint errors for release"         → v0.1.9, tagged v0.1.9
   ↑ aef3e2e  Fix lint errors for release
     3758eba  Upgrade version from 0.1.8 to 0.1.9
-    86ff1a4  Rebrand display text from "OneAI" to "oneAI"
+    86ff1a4  Rebrand display text from "oneAI" to "oneAI"
     181b1a9  Add Gateway Only mode, new AI operations, and compliance patterns
 ```
 
@@ -96,7 +96,7 @@ below. **Every agent prompt built from this research must open with `git fetch &
 3. **A `compliancePattern` resource** was added (5 operations, EU AI Act content policies).
 4. **New AI operations**: `createEmbedding`, `editImage`, `generateImage`, `generateSpeech`, `listImageModels`,
    `transcribeAudio` alongside the existing `createResponse` / `listModels`.
-5. **Display-name rebrand** `OneAI` → `oneAI` (the node's `displayName`, `defaults.name`, `description`, package
+5. **Display-name rebrand** `oneAI` → `oneAI` (the node's `displayName`, `defaults.name`, `description`, package
    `description` and `author.name`). The internal `name: 'oneAi'` was **not** changed — correctly (§3.4).
 6. **Toolchain bump**: `@n8n/node-cli` `"*"` → `^0.39.3`, `typescript` `5.9.2` → `6.0.3`, and `@types/node ^25.9.1`
    added; `nodes/OneAi/globals.d.ts` (the hand-rolled `declare class Buffer` shim) was deleted as a result.
@@ -162,7 +162,7 @@ The requirements, quoted verbatim and then checked against us:
 | # | `DOC-LITERAL` requirement (verification-guidelines.md, docs @ 6f4b48e6) | Our node (`origin/main`, v0.1.9) |
 |---|---|---|
 | V-1 | "All verified community node authors **should** use the `n8n-node` tool to create and check their package." | ✅ `build`/`dev`/`lint` all go through `n8n-node`. |
-| V-2 | "The node **MUST** not be an existing node" | ✅ no built-in OneAI node. |
+| V-2 | "The node **MUST** not be an existing node" | ✅ no built-in oneAI node. |
 | V-3 | "n8n isn't accepting Logic or Flow control nodes at the moment." | ✅ `group: ['transform']`, an API integration. |
 | V-4 | "**Each package should integrate exactly one third-party service.** … Packages that wrap multiple unrelated APIs or **act as a proxy layer for several services** generally don't qualify for verification." | ⚠️ see the risk note below — this is the one requirement our shape can drift into violating. |
 | V-5 | "Verify that your npm package repository URL matches the expected GitHub repository." | ✅ `repository.url` = `github.com/oneai-eu/n8n-nodes-oneai`, public. |
@@ -184,12 +184,12 @@ Two things the verification page does **not** say, and an agent must not invent:
 #### 🔴 V-4 is the requirement our roadmap can break
 
 The rule is *one third-party service per package*, and it explicitly excludes packages that "act as a proxy layer
-for several services". Our node is a client for **one** service (an OneAI instance), so it passes today. But the
+for several services". Our node is a client for **one** service (an oneAI instance), so it passes today. But the
 node exposes an `ai` resource that is an **inference gateway** — `createResponse`, `generateImage`,
 `transcribeAudio`, `listModels` fronting OpenAI/Anthropic/Google/Mistral models — and 0.1.9 added a credential
 switch literally called **`gatewayOnly`**.
 
-Whether an n8n reviewer reads "an LLM gateway with a model picker" as one service (OneAI) or as a proxy layer for
+Whether an n8n reviewer reads "an LLM gateway with a model picker" as one service (oneAI) or as a proxy layer for
 several (the model vendors) is `UNKNOWN` (U-4) and is not answerable from the documentation. It is also not a
 question an agent should guess at: it is a submission-risk judgement (§9, P-3).
 
@@ -284,7 +284,7 @@ clean, evidence-backed verdict:
 | Programmatic is **required** when… (`DOC-LITERAL`) | Does it apply to us? |
 |---|---|
 | Trigger nodes | No — we ship no trigger (§6). |
-| Not REST-based / GraphQL / external dependencies | No — OneAI's API is REST, and we have zero runtime deps. |
+| Not REST-based / GraphQL / external dependencies | No — oneAI's API is REST, and we have zero runtime deps. |
 | **"Any node that needs to transform incoming data"** | **Yes.** |
 | **Full versioning** | **Yes, prospectively** — see §3. |
 
@@ -361,7 +361,7 @@ There are **two independent version numbers**, and confusing them is the classic
 | **package version** (`0.1.9` in `package.json`) | npm semver of the *package* | npm, the instance operator installing/upgrading | none, directly — upgrading the package replaces the code every existing workflow runs |
 | **node `typeVersion`** (`version: 1` in `OneAi.node.ts`) | the *node type*'s version, stamped into every saved workflow node | n8n's workflow loader | **everything** — this is the only thing that pins old behaviour |
 
-`LOCAL-FACT`: our node declares `version: 1` as a **plain number**. Every OneAI node any user has ever placed in
+`LOCAL-FACT`: our node declares `version: 1` as a **plain number**. Every oneAI node any user has ever placed in
 a workflow is saved with `typeVersion: 1`. Bumping the npm package from `0.1.8` to `0.1.9` did **not** create a
 new node version — it silently replaced the code behind `typeVersion: 1` for every existing workflow on every
 instance that upgraded. That is the actual compatibility surface, and it is currently unguarded.
@@ -564,7 +564,7 @@ the property's `options` array.** There is no `typeUnknown`-style issue for a st
 | **Rename a parameter** (`name` key) | 🔴 **Breaking, silently** | `INTERPRETED` from the mechanism | The old key stays in the saved JSON and is ignored; the new key resolves to its `default`. **No error is raised.** This is the worst failure mode in the table because it is invisible. |
 | **Rename an operation's `value`** (e.g. `createResponse` → `chat`) | 🔴 **Breaking, and it reaches the user as our own error** | `DOC-LITERAL` (no options-membership validation in `getParameterIssues`) + `LOCAL-FACT` (`actions/router.ts` `default:` arm) | Saved value persists with no editor warning; at execution the router hits `default:` and throws `NodeOperationError(this.getNode(), 'Unknown operation: createResponse')`. |
 | **Remove** an operation or resource | 🔴 **Breaking**, same path | same | Identical to a rename. |
-| **Change a `displayName`** (of node, resource, operation or parameter) | ✅ **Safe** | `DOC-LITERAL` — `INodeTypeBaseDescription.name` is the identity; `displayName` is presentation | Cosmetic only. Confirmed by n8n itself: `Set.node.ts` still has `name: 'set'` while the product is called "Edit Fields". Our 0.1.9 `OneAI`→`oneAI` rebrand kept `name: 'oneAi'` — **correct, and the right precedent to write down.** |
+| **Change a `displayName`** (of node, resource, operation or parameter) | ✅ **Safe** | `DOC-LITERAL` — `INodeTypeBaseDescription.name` is the identity; `displayName` is presentation | Cosmetic only. Confirmed by n8n itself: `Set.node.ts` still has `name: 'set'` while the product is called "Edit Fields". Our 0.1.9 `oneAI`→`oneAI` rebrand kept `name: 'oneAi'` — **correct, and the right precedent to write down.** |
 | **Change the node's `name`** (`'oneAi'`) | 🔴 **Catastrophic** | `INTERPRETED`, high confidence | Every saved workflow references `@oneai-eu/n8n-nodes-oneai.oneAi`. A rename makes every existing node unrecognised (`typeUnknown`). Never do this. |
 | **Change the credential's `name`** (`'oneAiApi'`) | 🔴 **Catastrophic** | same | Every stored credential and every node's credential binding is keyed on it. |
 | **Add a credential field** | ✅ **Safe if optional** | `LOCAL-FACT` precedent: 0.1.9 added `gatewayOnly`, read as `credentials.gatewayOnly === true`, so `undefined` behaves as `false` | Existing credentials keep working. **This is the pattern to copy.** |
@@ -595,7 +595,7 @@ The escalation ladder, cheapest first:
 |---|---|---|
 | **1. `version: 1` → `version: [1]`** | one line; no behaviour change | Nothing yet, but it makes every later step a one-token edit instead of a refactor, and it is the shape the docs tell you to start from ("including your existing version"). Do this whether or not anything else happens. |
 | **2. Light versioning — `[1, 1.1]`, gate new/changed parameters on `@version`** | small, per-change | Everything in the "Breaking" rows above becomes safe **for existing workflows**. Sufficient for adding required parameters and for changing an operation's behaviour. |
-| **3. Feature-based versioning — a `features` block + `isNodeFeatureEnabled()`** | moderate: one `features` object and a branch per forked behaviour | Named, readable behaviour forks across a range of versions, without duplicating the node. `INTERPRETED`: the best fit if OneAI's API changes shape under us — which, given the platform ships continuously, is the realistic case. |
+| **3. Feature-based versioning — a `features` block + `isNodeFeatureEnabled()`** | moderate: one `features` object and a branch per forked behaviour | Named, readable behaviour forks across a range of versions, without duplicating the node. `INTERPRETED`: the best fit if oneAI's API changes shape under us — which, given the platform ships continuously, is the realistic case. |
 | **4. Full versioning — `VersionedNodeType` + `v1/` and `v2/` folders** | large: the node becomes a base file plus per-version implementation trees | A genuinely different node under the same name. Justified only by a wholesale redesign of the operation surface — e.g. the "what belongs in a workflow node at all" cut described in §9, P-1. n8n's own precedent (`HttpRequest`) shows you then *still* use light versioning inside each major. |
 
 Two things follow that agents must be told, not left to infer:
@@ -653,7 +653,7 @@ different, smaller security prompt.
 | **The n8n instance operator** | installs our package | runs our code with full host privileges; n8n's own docs say so (below) |
 | **The workflow author** | configures the node | supplies credentials, reads node output and errors |
 | **A downstream node / an AI agent** | consumes our output | sees everything we put in `json` |
-| **OneAI (the API)** | receives our requests | — |
+| **oneAI (the API)** | receives our requests | — |
 
 n8n is explicit that a community node is trusted code. `DOC-LITERAL`,
 `docs/integrations/community-nodes/risks.md`:
@@ -783,7 +783,7 @@ Three consequences for a client-shaped security prompt, and this is the section'
 2. **Never put a credential-derived value in `json`.** Our operations return API responses and echo parameters
    (`spaceId`, `path`), never credential fields. Keep it that way; make it an assertion.
 3. **Base URL is user-supplied and that is fine here, but say why.** `LOCAL-FACT`: the credential's `url` field
-   is an arbitrary URL the workflow author types, and every request goes to `${baseUrl}${endpoint}`. In OneAI's
+   is an arbitrary URL the workflow author types, and every request goes to `${baseUrl}${endpoint}`. In oneAI's
    own codebase that shape would be an SSRF finding. **It is not one here**, and the reason must be written down
    so no agent "fixes" it: the request is made by the n8n instance, on behalf of the person who typed the URL,
    with a credential they own — this is the same trust model as n8n's own HTTP Request node. The threat SSRF
@@ -923,7 +923,7 @@ catch the drift this repo actually suffers from:
 | Every operation's `description` array uses `displayOptions.show` naming a resource/operation pair that exists | a parameter that never appears, or appears everywhere |
 | Every `INodeExecutionData` returned carries `pairedItem` | duplicates `missing-paired-item`, but at the composed level |
 | The published operation-value set is a **superset** of the previous release's | 🔴 **the §3.4 breaking-rename check** — this is the one that protects users |
-| Every operation's endpoint path exists in OneAI's generated OpenAPI spec | the drift the earlier analysis (`docs/ANALYSIS-2026-09-03-agent-pipeline.md` §3) identified as the real problem |
+| Every operation's endpoint path exists in oneAI's generated OpenAPI spec | the drift the earlier analysis (`docs/ANALYSIS-2026-09-03-agent-pipeline.md` §3) identified as the real problem |
 
 The last two are the argument. Neither is a mock; both are computable from artefacts we own; and the
 "superset of the previous release" check is a **compatibility gate**, which no amount of live tracing gives you
@@ -983,7 +983,7 @@ a second one.** No new npm package, no second verification submission.
 
 `DOC-LITERAL`, error-handling.md, is also relevant to a *polling* trigger specifically: a `failure` declaration
 on a thrown error feeds n8n's own backoff — "n8n owns any behavior derived from the declaration, such as how a
-polling trigger backs off after a failed poll." So a polling trigger against OneAI would want
+polling trigger backs off after a failed poll." So a polling trigger against oneAI would want
 `{ cause: 'rate-limited', retryAfterMs }` handling from day one (§7.2).
 
 ### 6.3 What we have instead: `usableAsTool`
@@ -995,7 +995,7 @@ not exotic. `DOC-LITERAL`, `n8n-workflow@2.16.0` `interfaces.d.ts` documents the
 provided parts of the description".
 
 **This is a different capability from a trigger and does not substitute for one.** `usableAsTool` lets an AI
-Agent node *call* our node mid-workflow; a trigger *starts* a workflow. Whether OneAI should push events into
+Agent node *call* our node mid-workflow; a trigger *starts* a workflow. Whether oneAI should push events into
 n8n at all is the product question (§9, P-4). What this section establishes is only that the cost of adding a
 trigger later is bounded and well-documented, and that it does not disturb anything in §1–§5.
 
@@ -1095,7 +1095,7 @@ and `NodeApiErrorOptions extends` it with `{ message?, httpCode?, parseXml? }`. 
 on either. The feature the documentation describes is not present in the current published runtime.
 
 **Do not adopt `failure` declarations.** Re-check when the version story resolves — the fit would be excellent,
-because OneAI is quota- and plan-bounded and returns `PaymentRequiredError` (→ `quota-exhausted`) and
+because oneAI is quota- and plan-bounded and returns `PaymentRequiredError` (→ `quota-exhausted`) and
 `UnauthorizedError` (→ `credential-invalid`) distinctly. This is also a clean example of the discipline paying
 off twice: the docs say a feature exists "from n8n 3.37", the runtime says it does not exist at all, and only
 checking both caught it.
@@ -1272,8 +1272,8 @@ Three conclusions:
    the peer — which we should not, for this node.
 2. **It does not invalidate the `ai` resource.** Both shapes are legitimate and they serve different jobs.
 3. 🔴 **It is a genuine, previously-unconsidered product option** (P-8 below): a second node in the *same
-   package* — an "oneAI Chat Model" sub-node — would let any n8n AI Agent run on OneAI's governed, EU AI
-   Act-compliant gateway, which is much closer to OneAI's actual pitch than CRUD over spaces is. Note the
+   package* — an "oneAI Chat Model" sub-node — would let any n8n AI Agent run on oneAI's governed, EU AI
+   Act-compliant gateway, which is much closer to oneAI's actual pitch than CRUD over spaces is. Note the
    preview warning: "The API may change without notice."
 
 ---
@@ -1294,7 +1294,7 @@ An honest gap beats a plausible sentence. Each row says what would settle it and
 | **U-8** | 🔴 Does anything in n8n **2.x** break a community node written against the 1.x `n8n-workflow` API? | Decides whether "our node still works" is an assumption or a fact. Note §3.6: the fix is *not* pinning the peer, which lint forbids. | Install `@oneai-eu/n8n-nodes-oneai@0.1.9` into a current n8n 2.37.x and execute one operation of each shape (JSON, binary upload, paginated list). Also worth checking the still-maintained 1.123.x line. | ~2h |
 | **U-9** | ~~Do `failure` declarations exist today?~~ | — | **Settled negatively** in §7.6: `NodeApiErrorOptions` in `n8n-workflow@2.16.0` has no `failure` field. The documented feature is not available on any published n8n. Do not adopt. | done |
 | **U-10** | 🔴 Does an axios-shaped error passed to `NodeApiError` leak the `Authorization` header into the n8n output panel / persisted execution data? | The one credential-exposure question in an otherwise clean security picture. Our `transport/index.ts` passes the raw error through. | Point the credential at a URL that returns 401 (or a request-bin), run the node in `n8n-node dev`, and read the output panel and the execution record. | **~30 min — cheapest high-value check in this document** |
-| **U-11** | Does OneAI's own API surface still match what the 51 operations call? | The drift problem that motivated this whole line of work. | Diff the operation endpoint paths against `/root/oneai`'s generated `src/openapi.gen.ts`. Mechanical, and the obvious first agent task. | ~2h |
+| **U-11** | Does oneAI's own API surface still match what the 51 operations call? | The drift problem that motivated this whole line of work. | Diff the operation endpoint paths against `/root/oneai`'s generated `src/openapi.gen.ts`. Mechanical, and the obvious first agent task. | ~2h |
 | **U-12** | Does the README ship example workflows (V-10)? | A stated verification requirement; ours is short. | Read `README.md` against V-10 and compare against a verified node's README. | 15 min |
 
 Two `INTERPRETED` claims in this document deserve the same treatment as `UNKNOWN`s and should be verified before
@@ -1314,12 +1314,12 @@ anyone builds a rule on them:
 These are not research gaps. No amount of reading settles them, and an agent that guesses will produce something
 confidently wrong.
 
-**P-1 · What belongs in a workflow node at all.** OneAI's API is far larger than 51 operations, and n8n's UX
+**P-1 · What belongs in a workflow node at all.** oneAI's API is far larger than 51 operations, and n8n's UX
 guidance pulls in two directions at once (§7.3): be CRUD-complete *within* a resource, be ruthless about *which*
-resources exist. Mechanically porting every new OneAI endpoint would make the node worse while making a drift
+resources exist. Mechanically porting every new oneAI endpoint would make the node worse while making a drift
 check green. The prior analysis (`docs/ANALYSIS-2026-09-03-agent-pipeline.md` §5) reached the same conclusion
 independently. **Someone has to decide the cut before an architect agent runs**, and the specific pending
-question is OneData / Canvas / Browser Session: all of it, or a task-shaped subset?
+question is oneData / Canvas / Browser Session: all of it, or a task-shaped subset?
 
 **P-2 · 🔴 May a future release break existing workflows?** §3 makes the mechanics exact, so the question is now
 purely commercial:
@@ -1340,8 +1340,8 @@ that line than a CRM connector. There is also downside beyond rejection: the blo
 engage n8n at all — and how much of the `ai` gateway resource to lead with — is a positioning decision.
 
 **P-4 · Do we want a trigger node?** §6 establishes it would live in this same package, must be programmatic, and
-needs the full `webhookMethods` lifecycle (or a `poll()`). Whether OneAI should push events into n8n at all —
-and which events — is a product question about OneAI, not about n8n.
+needs the full `webhookMethods` lifecycle (or a `poll()`). Whether oneAI should push events into n8n at all —
+and which events — is a product question about oneAI, not about n8n.
 
 **P-5 · Repository home.** The node is on **GitHub**, while the platform moved to Forgejo. This is not
 incidental: **verification requires GitHub Actions with npm provenance**, and `@n8n/scan-community-package`
@@ -1356,7 +1356,7 @@ them undeclared is what poisons every automated coverage claim.
 yes/no, not a research question.
 
 **P-8 · 🔴 Should we ship an "oneAI Chat Model" sub-node?** New, and it came out of settling U-1 (§7.6). A
-chat-model sub-node built on `@n8n/ai-node-sdk` would make OneAI selectable as the LLM behind *any* n8n AI Agent
+chat-model sub-node built on `@n8n/ai-node-sdk` would make oneAI selectable as the LLM behind *any* n8n AI Agent
 — governance, audit and EU AI Act compliance included — rather than being one more resource in a CRUD node. It
 ships in the same package (the same rule that permits a trigger alongside the main node, §6.2). Against it: the
 SDK is explicitly in **preview** with an API that "may change without notice", and it would sharpen the V-4 /
@@ -1386,7 +1386,7 @@ Every row was checked against `origin/main` (v0.1.9 = npm `latest`), not the sta
 | **`usableAsTool: true`** | ✅ | Expected; `node-usable-as-tool` is in `recommended`. |
 | **No restricted globals or imports; no `eval`/`child_process`; no hardcoded secrets** | ✅ | Scanned every `.ts` under `nodes/` and `credentials/` on `origin/main`: zero hits. Keeps us Cloud-eligible. |
 | **Resource/operation grouping** | ✅ | `resource-operation-pattern` warns above 5 operations without resources; we have 8 resources. |
-| **Keeping `name: 'oneAi'` through the `OneAI` → `oneAI` rebrand** | ✅ **exactly right** | `displayName` is presentation, `name` is identity. n8n does the same (`Set.node.ts` is still `name: 'set'`). Whoever did that made the correct call; write it down so it stays made. |
+| **Keeping `name: 'oneAi'` through the `oneAI` → `oneAI` rebrand** | ✅ **exactly right** | `displayName` is presentation, `name` is identity. n8n does the same (`Set.node.ts` is still `name: 'set'`). Whoever did that made the correct call; write it down so it stays made. |
 | **`credentials.gatewayOnly` added as an optional boolean read via `=== true`** | ✅ | Additive credential field, `undefined` behaves as `false`. This is the template for future credential changes. |
 
 **The real gaps, in priority order** — everything else in this document is context for these:
@@ -1398,7 +1398,7 @@ Every row was checked against `origin/main` (v0.1.9 = npm `latest`), not the sta
 4. **§3.5 step 1** — `version: 1` → `version: [1]`, and a decision on P-2. (one line + one owner call)
 5. **V-12** — run `npx @n8n/scan-community-package @oneai-eu/n8n-nodes-oneai` and put it in CI. (one command)
 6. **§7.4 / P-6** — resolve the 26 dead operation files before any drift check is built on a file listing.
-7. **U-11** — the OneAI-spec drift check the earlier analysis identified as the actual product problem.
+7. **U-11** — the oneAI-spec drift check the earlier analysis identified as the actual product problem.
 
 ---
 

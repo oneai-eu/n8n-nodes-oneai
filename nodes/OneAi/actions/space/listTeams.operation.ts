@@ -26,7 +26,7 @@ export async function execute(
 
 	const response = await oneAiApiRequest.call(this, {
 		method: 'GET',
-		endpoint: `/api/spaces/${spaceId}/teams`,
+		endpoint: `/api/spaces/${encodeURIComponent(spaceId)}/teams`,
 	});
 
 	return this.helpers.returnJsonArray(response).map((item) => ({

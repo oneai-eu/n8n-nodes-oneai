@@ -89,7 +89,7 @@ export async function execute(
 		name,
 		spaceId,
 		// The schema documents `n8n` as one of the sources a chat can be created from, so say so
-		// rather than letting it default to `web`. It is how OneAI attributes a chat to this node.
+		// rather than letting it default to `web`. It is how oneAI attributes a chat to this node.
 		origin: 'n8n',
 	};
 

@@ -3,7 +3,7 @@
 Six agents, a gated order, and the rules all of them share. Read `CLAUDE.md` first — it holds the
 facts; this file holds the process.
 
-🔴 **This is not the OneAI connector pipeline with the names changed.** Two things make it a
+🔴 **This is not the oneAI connector pipeline with the names changed.** Two things make it a
 different machine, and copying across the difference is the failure mode to guard against:
 
 - **The API is ours.** The connector pipeline's expensive half exists because a third party owns the
@@ -20,12 +20,12 @@ different machine, and copying across the difference is the failure mode to guar
 ## Order
 
 ```
- 0  drift-check (script)     ── always first, and after every change
+ 0  drift-check + paired-item-check + panel-check  ── always first, and after every change
  1  node-architect           ── selection: what belongs in a workflow node ⏸ GATE
  2  node-implementer         ── one operation family per run
  3  node-validator  ┐
  4  node-security   ┘        ── in parallel
- 5  node-trace               ── a real workflow, a real n8n, real OneAI
+ 5  node-trace               ── a real workflow, a real n8n, real oneAI
  6  node-docs                ── README, codex, the published surface
 ```
 
@@ -90,8 +90,9 @@ Input: the drift report, the OpenAPI snapshot, `nodes-base` for shape precedent.
 operation set with a one-line justification each, the resources they group into, the parameter shapes,
 and — explicitly — **what it proposes to leave out and why**. Ends at the ⏸ GATE.
 
-Owner-given direction: **Chatting (very important)**, Spaces, Datasets, Audit Logs; **OneData is the
-most important missing feature**; no sign-in/OAuth surface at all.
+Owner-given direction: **Chatting (very important)**, Spaces, Datasets, Audit Logs; **oneData is the
+most important missing capability** and now ships as `dataset` / `datasetRow` — treat it as the
+worked example of a good answer, not as an open item; no sign-in/OAuth surface at all.
 
 ### `node-implementer` — one operation family per run
 
@@ -109,8 +110,13 @@ bodies change, and the operation you did not touch is the one that broke.
 ### `node-validator` — the gates, and whether the claims are true
 
 `npm run lint` · `npm run build` · `npx tsc --noEmit` · `node scripts/drift-check.mjs` ·
-🔴 `npx @n8n/scan-community-package`, which runs a newer rule set than local lint and which **has
-never been run here**.
+`node scripts/paired-item-check.mjs` · `node scripts/panel-check.mjs` ·
+`npx @n8n/scan-community-package`.
+
+🔴 Both checkers exit **2** when their own extractor is broken; that is never a finding, it means
+every number they printed is fiction. And the scanner examines the **published** package, not the
+working tree, so it can never gate a branch — parse its output for `✅`/`❌`, since its exit code is
+0 even on failure.
 
 Then the three-way check the connector pipeline does well: ratified selection ↔ implementer's claims
 ↔ live code. Judges test quality by the property-not-token standard, and re-runs the mutations
@@ -129,11 +135,15 @@ Not: multi-tenancy, confirmation gates, our own egress. Those are the platform's
 
 ### `node-trace` — both halves are ours
 
-`n8n-node dev` boots a local n8n with the node — one command, the supported path. OneAI to trace
-against is **devtest**; `n8n.oneai.de` resolves to the same machine.
+🔴 **The run ends with the node deployed on `n8n.oneai.de`** — the bench exists so the owner can
+open it the next morning and try the thing. Replace the installed community package there and
+restart it; production is `n8n.oneai.eu` and the `-ralf` container is a colleague's. oneAI to trace
+against is **devtest** on the same host.
 
-🔴 `oneai-devtest-n8n` serves `n8n.oneai.de` and `oneai-devtest-n8n-ralf` belongs to a colleague.
-Boot your own; touch neither. Never `--remove-orphans` on that host.
+On the bench, `docker restart` is allowed and is part of deploying; `stop`, `kill` and `rm` are not.
+🔴 Never `--remove-orphans` on that host — it deletes containers that are not in the compose file
+and has destroyed n8n there before. If you need an instance of your own instead, `n8n-node dev`
+boots one; that path does not exercise the real node type, so say so.
 
 **Owner authorisation (2026-09-03):** generate the credentials a trace needs on devtest — a **user
 API key** and a **gateway API key**. Both, because they validate differently: `oai_` against the hub
@@ -147,6 +157,11 @@ Prove the artefact first: a trace against a stale build is worse than no trace.
 README, `OneAi.node.json`, and the operation documentation a maintainer reads. This package is
 public, so its README is part of the product. Draft PR bodies in English, no AI attribution.
 
+🔴 Also **`TODO.md` and `SESSION-HISTORY.md`, every run** — both tracked. The history says what was
+decided, what was overturned, what a trace proved and what was **not** reached; the TODO carries the
+open loops with stable IDs. They are **data, not rules**: the substrate stays the owner's. Write
+them at the end of the RUN, not the end of the phase.
+
 ---
 
 ## HALT
@@ -156,6 +171,6 @@ Stop and ask rather than proceed when:
 - selection is unresolved — that is the owner's ruling, not an agent's
 - a change would **rename an operation or a parameter** on `typeVersion: 1`. A renamed parameter fails **silently**; this is the one class where guessing is worst
 - the drift check's vacuity guard fires — the extractor is broken, and any number it prints is fiction
-- a trace cannot reach a real n8n or a real OneAI. Report `NOT-REACHED`; do not simulate
+- a trace cannot reach a real n8n or a real oneAI. Report `NOT-REACHED`; do not simulate
 - an action would touch the registry, `main`, or a colleague's container
 - 🔴 a change would alter `.github/workflows/publish.yml`, `package.json`'s `version`, or add a lockfile. Each of those changes **the publish path itself**, which only the owner rules — and note that the path today runs no tests, no drift check and no `@n8n/scan-community-package`, with `npm install` against **no committed lockfile**, so `dist/` is built from whatever resolved in that job

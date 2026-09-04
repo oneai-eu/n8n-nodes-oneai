@@ -59,12 +59,16 @@ commit → `node-trace` → `node-docs` → draft PR.
 
 ## Environment
 
-- devtest is `adminui-dev`; `n8n.oneai.de` resolves to the same machine.
-- 🔴 `oneai-devtest-n8n` serves `n8n.oneai.de`; `-ralf` is a colleague's. Boot your own with
-  `n8n-node dev`. Never `docker compose … --remove-orphans` there.
+- devtest is `adminui-dev`; the oneAI hub is the `oneai-devtest` container on the same machine.
+- 🔴 **`n8n.oneai.de` is the TEST BENCH and the run deploys to it** (owner ruling 2026-09-04). It
+  exists so the owner can open the node the next morning and use it. Container
+  `oneai-devtest-n8n`, which already carries this package as an installed community package.
+  Production is `n8n.oneai.eu` and is never touched; `-ralf` is a colleague's instance and is never
+  stopped, restarted or removed. Never `docker compose … --remove-orphans` on that host.
 - **Credential authorisation (owner, 2026-09-03):** generate a **user API key** and a **gateway API
   key** on devtest as needed. Exercise both — they validate against different backends. Never print
-  one; delete them afterwards and verify.
+  one. Delete throwaway keys and verify; a labelled key left on the bench so the instance is usable
+  is authorised and is not a leak.
 - 🔴 `/root/oneai` is parked on an unrelated branch: readable, never writable.
 
 ## Definition of done
@@ -73,6 +77,9 @@ commit → `node-trace` → `node-docs` → draft PR.
 - [ ] drift check clean on tiers 1 and 3 (**path** and **shape**); tier 2 is information, not a failure
 - [ ] shipped operation set is a **superset of the last release**, or the break is owner-ruled
 - [ ] mutations counted, shortfalls explained
-- [ ] traced on a real n8n against real OneAI, with what was **NOT-REACHED** named
+- [ ] traced on a real n8n against real oneAI, with what was **NOT-REACHED** named
+- [ ] 🔴 **deployed on `n8n.oneai.de`**, version-marked so it cannot be mistaken for the release,
+      with a credential and a demo workflow the owner can open — and the rollback written down
+- [ ] `TODO.md` and `SESSION-HISTORY.md` updated at the END of the run
 - [ ] draft PR, English, no AI attribution
 - [ ] `CLAUDE.md` / `AGENTS.md` updated if the run contradicted them

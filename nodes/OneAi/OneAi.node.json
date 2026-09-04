@@ -1,18 +1,30 @@
 {
-	"node": "n8n-nodes-oneai.oneAi",
+	"node": "@oneai-eu/n8n-nodes-oneai.oneAi",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Productivity"],
+	"categories": ["Data & Storage", "Productivity"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://oneai.eu" 
+				"url": "https://github.com/oneai-eu/n8n-nodes-oneai#authentication"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://oneai.eu"
+				"url": "https://github.com/oneai-eu/n8n-nodes-oneai#readme"
 			}
 		]
-	}
+	},
+	"alias": [
+		"oneAI",
+		"oneData",
+		"dataset",
+		"table",
+		"LLM",
+		"embedding",
+		"transcription",
+		"EU AI Act",
+		"space",
+		"artifact"
+	]
 }

@@ -20,6 +20,8 @@ export const RESOURCES: ResourceDefinition[] = [
 	{ name: 'Artifact', value: 'artifact', description: 'Hub artifacts (markdown, PDFs, distilled documents)', gateway: false },
 	{ name: 'Chat', value: 'chat', description: 'Hub chat management', gateway: false },
 	{ name: 'Compliance Pattern', value: 'compliancePattern', description: 'Hub compliance patterns (EU AI Act content policies)', gateway: false },
+	{ name: 'Dataset', value: 'dataset', description: 'Tables in a oneData space: schema, CSV import and export', gateway: false },
+	{ name: 'Dataset Row', value: 'datasetRow', description: 'Rows in a oneData table: append, read, update, delete', gateway: false },
 	{ name: 'Miscellaneous', value: 'miscellaneous', description: 'Authentication checks and helpers', gateway: true },
 	{ name: 'Project', value: 'project', description: 'Hub projects', gateway: false },
 	{ name: 'Reference', value: 'reference', description: 'Browse hub spaces and files as chat references', gateway: false },
@@ -86,9 +88,10 @@ export const OPERATIONS: Record<string, OperationDefinition[]> = {
 		},
 	],
 	artifact: [
-		{ name: 'Create', value: 'create', description: 'Create an artifact from a file', action: 'Create an artifact', gateway: false },
+		{ name: 'Create', value: 'create', description: 'Create an artifact in a space, optionally from a chat message', action: 'Create an artifact', gateway: false },
 		{ name: 'Delete', value: 'delete', description: 'Delete an artifact from a space', action: 'Delete an artifact', gateway: false },
 		{ name: 'Export PDF', value: 'exportPdf', description: 'Export an artifact as a PDF', action: 'Export artifact as PDF', gateway: false },
+		{ name: 'Export PPTX', value: 'exportPptx', description: 'Export a presentation artifact as a PPTX file', action: 'Export artifact as PPTX', gateway: false },
 		{ name: 'Get Markdown', value: 'getMarkdown', description: 'Get the markdown content of an artifact', action: 'Get artifact markdown', gateway: false },
 		{ name: 'List All', value: 'listAll', description: 'List all artifacts with optional filtering', action: 'List all artifacts', gateway: false },
 		{ name: 'List by Space', value: 'listBySpace', description: 'List artifacts in a specific space', action: 'List artifacts in space', gateway: false },
@@ -107,17 +110,35 @@ export const OPERATIONS: Record<string, OperationDefinition[]> = {
 		{ name: 'List', value: 'list', description: 'List default and custom compliance patterns', action: 'List compliance patterns', gateway: false },
 		{ name: 'Set Enabled', value: 'setEnabled', description: 'Enable or disable a compliance pattern', action: 'Enable or disable a compliance pattern', gateway: false },
 	],
+	dataset: [
+		{ name: 'Create', value: 'create', description: 'Create an empty dataset with a typed schema', action: 'Create a dataset', gateway: false },
+		{ name: 'Export CSV', value: 'exportCsv', description: 'Export a whole dataset as a CSV file', action: 'Export a dataset as CSV', gateway: false },
+		{ name: 'Import CSV', value: 'importCsv', description: 'Bulk-append the rows of a CSV file to a dataset', action: 'Import a CSV into a dataset', gateway: false },
+		{ name: 'List', value: 'list', description: 'List the datasets in a space with their columns and row counts', action: 'List datasets in space', gateway: false },
+		{ name: 'List Spaces', value: 'listSpaces', description: 'List the spaces that hold datasets, to get a space ID for the other dataset operations', action: 'List dataset spaces', gateway: false },
+		{ name: 'Update Schema', value: 'updateSchema', description: "Add, drop or rename a dataset's columns", action: 'Update a dataset schema', gateway: false },
+	],
+	datasetRow: [
+		{ name: 'Append', value: 'append', description: 'Append one row per input item and return each new row ID', action: 'Append a dataset row', gateway: false },
+		{ name: 'Append Many', value: 'appendMany', description: 'Append every input item in a single CSV request, without row IDs', action: 'Append many dataset rows', gateway: false },
+		{ name: 'Delete', value: 'delete', description: 'Delete rows from a dataset by their IDs', action: 'Delete dataset rows', gateway: false },
+		{ name: 'List', value: 'list', description: "List a dataset's rows, each with its row ID", action: 'List dataset rows', gateway: false },
+		{ name: 'Update', value: 'update', description: 'Update named columns of one row by its ID', action: 'Update a dataset row', gateway: false },
+	],
 	miscellaneous: [
 		{ name: 'Check Authentication', value: 'checkAuth', description: 'Check the authenticated user and return their details', action: 'Check authenticated user', gateway: true },
 	],
-	// `Create` and `Delete` were removed: OneAI no longer serves `POST /api/projects` or
-	// `DELETE /api/projects/{projectId}`. Projects are now created from a template
-	// (`POST /api/projects/templates/{templateId}/instantiate`) and retired by archiving them
-	// (`POST /api/projects/bulk`). Neither is a drop-in replacement, so neither is guessed at
-	// here - see the pull request for the proposal to add them as their own operations.
+	// `Create` and `Delete` were removed: oneAI no longer serves `POST /api/projects` or
+	// `DELETE /api/projects/{projectId}`. The capability is back under the names of the endpoints
+	// that do exist - `Instantiate Template` creates a project from a template, `Archive` retires
+	// one - and deliberately not under the old names, because neither is a drop-in replacement:
+	// instantiating takes a template ID rather than a name, and archiving is reversible.
 	project: [
+		{ name: 'Archive', value: 'archive', description: 'Archive a project', action: 'Archive a project', gateway: false },
 		{ name: 'Get', value: 'get', description: 'Get a project by ID', action: 'Get a project', gateway: false },
+		{ name: 'Instantiate Template', value: 'instantiateTemplate', description: 'Create a new project from a project template', action: 'Create a project from a template', gateway: false },
 		{ name: 'List', value: 'list', description: 'List all projects', action: 'List all projects', gateway: false },
+		{ name: 'Unarchive', value: 'unarchive', description: 'Restore a project from the archive', action: 'Unarchive a project', gateway: false },
 		{ name: 'Update', value: 'update', description: 'Update a project', action: 'Update a project', gateway: false },
 	],
 	reference: [
@@ -151,6 +172,8 @@ export const DEFAULT_OPERATION_PER_RESOURCE: Record<string, string> = {
 	artifact: 'listAll',
 	chat: 'list',
 	compliancePattern: 'list',
+	dataset: 'list',
+	datasetRow: 'list',
 	miscellaneous: 'checkAuth',
 	project: 'list',
 	reference: 'listSpaces',

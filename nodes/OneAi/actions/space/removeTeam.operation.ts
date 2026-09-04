@@ -41,7 +41,7 @@ export async function execute(
 
 	const response = await oneAiApiRequest.call(this, {
 		method: 'POST',
-		endpoint: `/api/spaces/${spaceId}/teams/remove`,
+		endpoint: `/api/spaces/${encodeURIComponent(spaceId)}/teams/remove`,
 		body: {
 			teamId,
 		},

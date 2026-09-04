@@ -14,8 +14,19 @@ npm run lint            # n8n-node lint, n8n's own rule set
 npm run build           # n8n-node build
 npx tsc --noEmit        # strict, noImplicitAny
 node scripts/drift-check.mjs
+node scripts/paired-item-check.mjs
 npx @n8n/scan-community-package @oneai-eu/n8n-nodes-oneai   # 🔴 see below
 ```
+
+Exit **2** from either checker means its own extractor is broken and every number it printed is
+fiction. That is never a finding to wave through, and never a pass.
+
+🔴 **If the run deployed to the bench, verify that what is running there is what you reviewed.**
+`https://n8n.oneai.de` is where a run leaves the node, and a stale deployment certifies the wrong
+artefact exactly the way a stale build does. Read n8n's own type cache in the container
+(`/home/node/.cache/n8n/public/types/nodes.json`) and confirm the resources you validated are the
+ones loaded, and that `installed_packages` carries the unreleased marker rather than the release's
+version number.
 
 🔴 Three things about the scanner that will otherwise mislead you:
 
@@ -45,6 +56,19 @@ appears is worth little; one asserting the symbol resolves to the right binding 
 Then falsify: break the thing each test guards and count the reds. Report **expected vs actual**. A
 shortfall explained honestly is worth more than a number rounded up — and a mutation that reddens
 nothing means the test is decorative.
+
+🔴 **Ask what the checker does not READ, not only what it does not assert.** A rule is also defeated
+by a file the scanner never opens. `paired-item-check` once globbed `*.operation.ts` only; moving the
+shadowing defect into a `helpers.ts`, while leaving one correct site behind in the operation file to
+satisfy the "emits lineage at all" rule, produced `tsc` 0, drift 0 and `RESULT: clean, exit 0` on
+genuinely wrong lineage. That mutation — **relocate the defect into a file the checker's own glob
+excludes** — belongs in every validation run.
+
+🔴 **Prove the gate is running before you report that it passed.** A gate that has stopped running
+and a gate that passes are indistinguishable from the exit code. Introduce the violation the rule
+exists to catch — a lowercase description for the lint rule, say — confirm the tool reports it at the
+expected file and line, then restore. On 2026-09-03 two agents disagreed about whether `npm run lint`
+passed; only this settled it.
 
 Specific things worth pinning here, because nothing else catches them:
 - an operation reachable through the **router**, not merely present as a file

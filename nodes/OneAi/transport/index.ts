@@ -100,6 +100,12 @@ export interface OneAiApiBinaryRequestOptions {
 	endpoint: string;
 	body: Buffer;
 	qs?: IDataObject;
+	/**
+	 * The media type of the raw body. Defaults to `application/octet-stream`, which is what the
+	 * file-upload endpoints take. `POST /api/spaces/{spaceId}/tables/{tableName}/import-csv`
+	 * declares `text/csv` and nothing else, so it has to be able to say so.
+	 */
+	contentType?: string;
 }
 
 export async function oneAiApiRequestBinary(
@@ -114,7 +120,7 @@ export async function oneAiApiRequestBinary(
 		method: options.method,
 		url: `${baseUrl}${options.endpoint}`,
 		headers: {
-			'Content-Type': 'application/octet-stream',
+			'Content-Type': options.contentType ?? 'application/octet-stream',
 		},
 		body: options.body,
 	};

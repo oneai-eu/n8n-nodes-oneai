@@ -40,7 +40,7 @@ export const description: INodeProperties[] = [
 		required: true,
 		default: 'seaweed',
 		description:
-			'Storage provider for the space. Providers that authenticate through OAuth additionally need an authorization code and a signed state, both issued by OneAI outside n8n.',
+			'Storage provider for the space. Providers that authenticate through OAuth additionally need an authorization code and a signed state, both issued by oneAI outside n8n.',
 		options: PROVIDER_OPTIONS,
 		displayOptions: {
 			show: {
@@ -112,7 +112,7 @@ export const description: INodeProperties[] = [
 				type: 'string',
 				typeOptions: { password: true },
 				default: '',
-				description: 'Signed state issued by OneAI. Required for OAuth providers.',
+				description: 'Signed state issued by oneAI. Required for OAuth providers.',
 			},
 		],
 	},

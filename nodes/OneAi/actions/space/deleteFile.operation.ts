@@ -41,7 +41,7 @@ export async function execute(
 
 	const response = await oneAiApiRequest.call(this, {
 		method: 'DELETE',
-		endpoint: `/api/spaces/${spaceId}/files/delete`,
+		endpoint: `/api/spaces/${encodeURIComponent(spaceId)}/files/delete`,
 		qs: {
 			path,
 		},

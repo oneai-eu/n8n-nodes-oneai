@@ -26,7 +26,7 @@ export async function execute(
 
 	const response = await oneAiApiRequest.call(this, {
 		method: 'DELETE',
-		endpoint: `/api/spaces/${spaceId}`,
+		endpoint: `/api/spaces/${encodeURIComponent(spaceId)}`,
 	});
 
 	return this.helpers.returnJsonArray(response).map((item) => ({
