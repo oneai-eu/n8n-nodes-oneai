@@ -46,18 +46,26 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Project ID',
-				name: 'projectId',
-				type: 'string',
-				default: '',
-				description: 'Filter chats by project ID',
+				displayName: 'Own Only',
+				name: 'ownOnly',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to return only chats owned by the authenticated user',
 			},
 			{
 				displayName: 'Search',
 				name: 'search',
 				type: 'string',
 				default: '',
-				description: 'Search term to filter chats by name or project name',
+				description:
+					'Search term. Matches chat names as a substring and message contents as full text; supports quoted phrases and OR.',
+			},
+			{
+				displayName: 'Space ID',
+				name: 'spaceId',
+				type: 'string',
+				default: '',
+				description: 'Filter chats by space ID',
 			},
 		],
 	},
@@ -69,22 +77,30 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
 	const filters = this.getNodeParameter('filters', index) as {
-		projectId?: string;
+		spaceId?: string;
 		search?: string;
+		ownOnly?: boolean;
 	};
 
+	// `GET /api/chats` filters by `spaceId`. It used to be sent `projectId`, which is not a
+	// parameter the endpoint defines - unknown query parameters are ignored rather than
+	// rejected, so the filter silently returned every chat instead of failing.
 	const qs: {
-		projectId?: string;
+		spaceId?: string;
 		search?: string;
+		ownOnly?: boolean;
 		page?: number;
 		pageSize?: number;
 	} = {};
 
-	if (filters.projectId) {
-		qs.projectId = filters.projectId;
+	if (filters.spaceId) {
+		qs.spaceId = filters.spaceId;
 	}
 	if (filters.search) {
 		qs.search = filters.search;
+	}
+	if (filters.ownOnly) {
+		qs.ownOnly = filters.ownOnly;
 	}
 
 	if (returnAll) {
@@ -94,7 +110,7 @@ export async function execute(
 			qs,
 			itemsKey: 'chats',
 		});
-		return this.helpers.returnJsonArray(chats).map((item, index) => ({
+		return this.helpers.returnJsonArray(chats).map((item) => ({
 			...item,
 			pairedItem: { item: index },
 		}));
@@ -111,7 +127,7 @@ export async function execute(
 	});
 
 	const chats = (response.chats as IDataObject[]) || [];
-	return this.helpers.returnJsonArray(chats).map((item, index) => ({
+	return this.helpers.returnJsonArray(chats).map((item) => ({
 		...item,
 		pairedItem: { item: index },
 	}));

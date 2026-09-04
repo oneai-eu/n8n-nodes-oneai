@@ -1,4 +1,4 @@
-import type { INodePropertyOptions } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export interface ResourceDefinition {
 	name: string;
@@ -98,7 +98,7 @@ export const OPERATIONS: Record<string, OperationDefinition[]> = {
 		{ name: 'Delete', value: 'delete', description: 'Delete a chat', action: 'Delete a chat', gateway: false },
 		{ name: 'Get', value: 'get', description: 'Get chat history', action: 'Get a chat', gateway: false },
 		{ name: 'List', value: 'list', description: 'List chats with optional filtering', action: 'List all chats', gateway: false },
-		{ name: 'Update', value: 'update', description: 'Update chat details (rename or move)', action: 'Update a chat', gateway: false },
+		{ name: 'Update', value: 'update', description: 'Update chat details (rename, switch branch, or set persona/agent)', action: 'Update a chat', gateway: false },
 	],
 	compliancePattern: [
 		{ name: 'Create', value: 'create', description: 'Create a custom compliance pattern', action: 'Create a compliance pattern', gateway: false },
@@ -110,9 +110,12 @@ export const OPERATIONS: Record<string, OperationDefinition[]> = {
 	miscellaneous: [
 		{ name: 'Check Authentication', value: 'checkAuth', description: 'Check the authenticated user and return their details', action: 'Check authenticated user', gateway: true },
 	],
+	// `Create` and `Delete` were removed: OneAI no longer serves `POST /api/projects` or
+	// `DELETE /api/projects/{projectId}`. Projects are now created from a template
+	// (`POST /api/projects/templates/{templateId}/instantiate`) and retired by archiving them
+	// (`POST /api/projects/bulk`). Neither is a drop-in replacement, so neither is guessed at
+	// here - see the pull request for the proposal to add them as their own operations.
 	project: [
-		{ name: 'Create', value: 'create', description: 'Create a new project', action: 'Create a project', gateway: false },
-		{ name: 'Delete', value: 'delete', description: 'Delete a project', action: 'Delete a project', gateway: false },
 		{ name: 'Get', value: 'get', description: 'Get a project by ID', action: 'Get a project', gateway: false },
 		{ name: 'List', value: 'list', description: 'List all projects', action: 'List all projects', gateway: false },
 		{ name: 'Update', value: 'update', description: 'Update a project', action: 'Update a project', gateway: false },
@@ -154,27 +157,65 @@ export const DEFAULT_OPERATION_PER_RESOURCE: Record<string, string> = {
 	space: 'list',
 };
 
-export const filterResources = (gatewayOnly: boolean): INodePropertyOptions[] =>
-	RESOURCES.filter((r) => !gatewayOnly || r.gateway).map((r) => ({
+/**
+ * 🔴 `resource` and `operation` as STATIC option arrays, and why that matters more than the
+ * credential-aware filtering it replaces.
+ *
+ * n8n's node creator is **action-first**: it builds a node's entries in the nodes panel from the
+ * static `options` of `resource` and `operation`, and from the `action` string on each operation.
+ * Version 0.1.9 moved both parameters to `loadOptions`, which is evaluated only after a node is
+ * already on the canvas. The node therefore produced **zero actions**, and searching the panel for
+ * "oneai" found nothing at all - not the operations, not the node. Measured on a real instance:
+ * this node 0 options / 0 actions, Slack 7 and 17 options / 7 actions, and even the minimal shipped
+ * Perplexity node 1 and 1 / 4. `0.1.8` had static options and no `loadOptionsMethod` anywhere.
+ *
+ * The values are generated from the same `RESOURCES` / `OPERATIONS` the router validates against,
+ * so they cannot drift apart, and they are byte-identical to what `loadOptions` returned - nothing
+ * is renamed and no saved workflow changes meaning.
+ *
+ * What this costs, deliberately: a static list cannot be filtered by the credential, so a
+ * Gateway-only credential now shows hub operations in the dropdown. `isOperationAllowed` still
+ * refuses them at runtime with a message naming the reason. A worse dropdown for Gateway users beats
+ * an invisible node for everyone.
+ */
+export const resourceProperty: INodeProperties = {
+	displayName: 'Resource',
+	name: 'resource',
+	type: 'options',
+	noDataExpression: true,
+	default: DEFAULT_RESOURCE,
+	options: RESOURCES.map((r) => ({
 		name: r.name,
 		value: r.value,
 		description: r.description,
-	}));
-
-export const filterOperations = (
-	resource: string,
-	gatewayOnly: boolean,
-): INodePropertyOptions[] => {
-	const ops = OPERATIONS[resource] ?? [];
-	return ops
-		.filter((o) => !gatewayOnly || o.gateway)
-		.map((o) => ({
-			name: o.name,
-			value: o.value,
-			description: o.description,
-			action: o.action,
-		}));
+	})),
 };
+
+/**
+ * One `operation` property per resource, each shown only for its own resource - the shape n8n's
+ * own nodes use, and the one the node creator reads to build actions.
+ */
+// A default IS set below, from DEFAULT_OPERATION_PER_RESOURCE. The rule reads object literals
+// statically and cannot see one that is computed, so it reports a missing default that is present.
+// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+export const operationProperties: INodeProperties[] = RESOURCES.map((r) => ({
+	displayName: 'Operation',
+	name: 'operation',
+	type: 'options',
+	noDataExpression: true,
+	displayOptions: {
+		show: {
+			resource: [r.value],
+		},
+	},
+	default: DEFAULT_OPERATION_PER_RESOURCE[r.value] ?? '',
+	options: (OPERATIONS[r.value] ?? []).map((o) => ({
+		name: o.name,
+		value: o.value,
+		description: o.description,
+		action: o.action,
+	})),
+}));
 
 export const isOperationAllowed = (
 	resource: string,

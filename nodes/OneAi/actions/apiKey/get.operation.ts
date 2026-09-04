@@ -30,7 +30,7 @@ export async function execute(
 		endpoint: `/api/keys/${apiKeyId}`,
 	});
 
-	return this.helpers.returnJsonArray(response).map((item, index) => ({
+	return this.helpers.returnJsonArray(response).map((item) => ({
 		...item,
 		pairedItem: { item: index },
 	}));

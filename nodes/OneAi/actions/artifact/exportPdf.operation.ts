@@ -1,5 +1,16 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { oneAiApiRequest } from '../../transport';
+import { oneAiApiRequestRaw } from '../../transport';
+
+/**
+ * Artifact export changed shape entirely: it was
+ * `POST /api/spaces/{spaceId}/artifacts/export/{artifactId}` returning JSON, and is now
+ * `GET /api/spaces/{spaceId}/artifacts/{artifactId}/pdf` returning the PDF bytes. Different
+ * path, different method, different response kind.
+ *
+ * The old `mermaidSvgs` option is gone with the request body - the endpoint takes no body at
+ * all now, and the server renders the diagrams itself.
+ */
+const OUTPUT_MIME_TYPE = 'application/pdf';
 
 export const description: INodeProperties[] = [
 	{
@@ -31,26 +42,18 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Option',
-		default: {},
+		displayName: 'Put Output File in Field',
+		name: 'binaryPropertyName',
+		type: 'string',
+		default: 'data',
+		required: true,
+		description: 'The binary property name to write the exported PDF to',
 		displayOptions: {
 			show: {
 				resource: ['artifact'],
 				operation: ['exportPdf'],
 			},
 		},
-		options: [
-			{
-				displayName: 'Mermaid SVGs',
-				name: 'mermaidSvgs',
-				type: 'string',
-				default: '',
-				description: 'Comma-separated list of pre-rendered Mermaid diagram SVGs',
-			},
-		],
 	},
 ];
 
@@ -60,26 +63,29 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const spaceId = this.getNodeParameter('spaceId', index) as string;
 	const artifactId = this.getNodeParameter('artifactId', index) as string;
-	const options = this.getNodeParameter('options', index) as {
-		mermaidSvgs?: string;
-	};
+	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index) as string;
 
-	const body: {
-		mermaidSvgs?: string[];
-	} = {};
-
-	if (options.mermaidSvgs) {
-		body.mermaidSvgs = options.mermaidSvgs.split(',').map((s) => s.trim());
-	}
-
-	const response = await oneAiApiRequest.call(this, {
-		method: 'POST',
-		endpoint: `/api/spaces/${spaceId}/artifacts/export/${artifactId}`,
-		body,
+	const pdf = await oneAiApiRequestRaw.call(this, {
+		method: 'GET',
+		endpoint: `/api/spaces/${spaceId}/artifacts/${artifactId}/pdf`,
 	});
 
-	return this.helpers.returnJsonArray(response).map((item, index) => ({
-		...item,
-		pairedItem: { item: index },
-	}));
+	const binaryData = await this.helpers.prepareBinaryData(
+		pdf,
+		`${artifactId}.pdf`,
+		OUTPUT_MIME_TYPE,
+	);
+
+	return [
+		{
+			json: {
+				spaceId,
+				artifactId,
+				fileName: `${artifactId}.pdf`,
+				mimeType: OUTPUT_MIME_TYPE,
+			},
+			binary: { [binaryPropertyName]: binaryData },
+			pairedItem: { item: index },
+		},
+	];
 }

@@ -583,16 +583,28 @@ function resolveFields(valueExpr, scope, types) {
 		}
 	}
 
-	// conditional assignments: `body.description = additionalFields.description;`
+	// assignments: `body.description = additionalFields.description;`
+	//
+	// Whether one is always reached is decided by brace depth, not by assuming the worst. An
+	// assignment at the same depth as the declaration is straight-line code and IS always sent;
+	// a deeper one sits inside an `if` (or a loop, or a `try`) and is not. Treating every
+	// assignment as conditional reported `space.listFiles` as never sending the required
+	// `pageSize` when the line `qs.pageSize = limit;` is unguarded two statements above the
+	// call - a false positive, which is the one kind of finding this tool cannot afford.
+	//
+	// This is deliberately not flow analysis: an unguarded assignment placed after an early
+	// `return` still counts as always-sent for every call in the file. That direction can only
+	// hide a finding, never invent one.
+	const declDepth = declarationDepth(scope, name);
 	const asgRe = new RegExp(`\\b${name}\\.(\\w+)\\s*=\\s*([^;]+);`, 'g');
 	let am;
 	while ((am = asgRe.exec(scope))) {
 		const k = am[1];
 		const prev = keys.get(k);
+		const unguarded = declDepth !== null && depthAt(scope, am.index) === declDepth;
 		keys.set(k, {
 			type: inferValueType(am[2], types) ?? prev?.type ?? null,
-			// an assignment reached only under an `if` cannot be treated as always-sent
-			always: prev?.always === true && prev?.via === 'initializer',
+			always: unguarded || (prev?.always === true && prev?.via === 'initializer'),
 			via: 'assignment',
 		});
 	}
@@ -601,6 +613,12 @@ function resolveFields(valueExpr, scope, types) {
 		return { keys, opaque: true, source: 'unresolved', note: name };
 	}
 	return { keys, opaque: false, source: 'variable' };
+}
+
+/** Brace depth of the `const <name>` declaration, or null when there is none. */
+function declarationDepth(scope, name) {
+	const m = new RegExp(`const\\s+${name}\\b`).exec(scope);
+	return m ? depthAt(scope, m.index) : null;
 }
 
 /** Return the initializer text of `const <name> ... = <init>;` inside the scope. */

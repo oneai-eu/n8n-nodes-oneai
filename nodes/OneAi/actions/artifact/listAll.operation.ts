@@ -94,7 +94,7 @@ export async function execute(
 			qs,
 			itemsKey: 'artifacts',
 		});
-		return this.helpers.returnJsonArray(artifacts).map((item, index) => ({
+		return this.helpers.returnJsonArray(artifacts).map((item) => ({
 			...item,
 			pairedItem: { item: index },
 		}));
@@ -111,7 +111,7 @@ export async function execute(
 	});
 
 	const artifacts = (response.artifacts as IDataObject[]) || [];
-	return this.helpers.returnJsonArray(artifacts).map((item, index) => ({
+	return this.helpers.returnJsonArray(artifacts).map((item) => ({
 		...item,
 		pairedItem: { item: index },
 	}));

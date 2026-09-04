@@ -11,12 +11,28 @@ import * as reference from './reference';
 import * as space from './space';
 import { isOperationAllowed } from '../modes';
 
+/** n8n's own sentinel for the "Custom API Call" option it injects into resource/operation lists. */
+const CUSTOM_API_CALL = '__CUSTOM_API_CALL__';
+
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
 	const returnData: INodeExecutionData[] = [];
 
 	const resource = this.getNodeParameter('resource', 0) as string;
-	const operation = this.getNodeParameter('operation', 0) as string;
+	// A fallback rather than a throw: when the author picks "Custom API Call", n8n displays no
+	// `operation` property at all, and reading it without one fails with its own internal
+	// `Could not get parameter "operation"` - which tells the author nothing.
+	const operation = this.getNodeParameter('operation', 0, '') as string;
+
+	// n8n adds "Custom API Call" to `resource` and `operation` by itself, for any node that has
+	// static options and a credential. We do not implement it, so say so in terms the author can
+	// act on instead of letting them meet an internal error.
+	if (resource === CUSTOM_API_CALL || operation === CUSTOM_API_CALL) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'This node does not support "Custom API Call". Choose a resource and an operation, or use n8n\'s HTTP Request node with your oneAI credential to call an endpoint this node does not expose.',
+		);
+	}
 
 	let gatewayOnly = false;
 	try {
@@ -153,10 +169,10 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 							responseData = await ai.generateSpeech.execute.call(this, i);
 							break;
 						case 'listModels':
-							responseData = await ai.listModels.execute.call(this);
+							responseData = await ai.listModels.execute.call(this, i);
 							break;
 						case 'listImageModels':
-							responseData = await ai.listImageModels.execute.call(this);
+							responseData = await ai.listImageModels.execute.call(this, i);
 							break;
 						case 'transcribeAudio':
 							responseData = await ai.transcribeAudio.execute.call(this, i);
@@ -172,12 +188,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 				case 'project':
 					switch (operation) {
-						case 'create':
-							responseData = await project.create.execute.call(this, i);
-							break;
-						case 'delete':
-							responseData = await project.delete.execute.call(this, i);
-							break;
 						case 'get':
 							responseData = await project.get.execute.call(this, i);
 							break;

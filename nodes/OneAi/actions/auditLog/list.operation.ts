@@ -106,7 +106,7 @@ export async function execute(
 			itemsKey: 'logs',
 			paginationKey: 'pagination',
 		});
-		return this.helpers.returnJsonArray(logs).map((item, index) => ({
+		return this.helpers.returnJsonArray(logs).map((item) => ({
 			...item,
 			pairedItem: { item: index },
 		}));
@@ -123,7 +123,7 @@ export async function execute(
 	});
 
 	const logs = (response.logs as IDataObject[]) || [];
-	return this.helpers.returnJsonArray(logs).map((item, index) => ({
+	return this.helpers.returnJsonArray(logs).map((item) => ({
 		...item,
 		pairedItem: { item: index },
 	}));
