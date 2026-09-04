@@ -103,8 +103,13 @@ check green.
 
 ## 7. Open questions for the owner — none of these should be guessed
 
-1. **Trace target:** is `n8n.oneai.de` the instance, and is this node installed there? (devtest also runs
-   `oneai-devtest-n8n` and `oneai-devtest-n8n-ralf` containers, which are **not** in its compose file.)
+1. ~~**Trace target:** is `n8n.oneai.de` the instance, and is this node installed there?~~
+   🟢 **ANSWERED 2026-09-04 — yes to both.** It is the test bench, it exists so a run can leave the
+   node running for the owner, and this package is installed there as a community package.
+   🔴 Worth keeping visible: this question was raised here as one that *should not be guessed*, and
+   it was guessed anyway — the opposite answer went into `CLAUDE.md`, `AGENTS.md`, `node-trace.md`
+   and a hook as a prohibition, and cost a whole run's trace work. An open question left unanswered
+   does not stay neutral; it gets filled in by whoever writes the next document.
 2. **Release path:** npm publish on tag, or manual? Who owns the npm organisation?
 3. **Compatibility:** may `v0.2` break existing workflows, or must it stay additive?
 4. 🔴 **Scope:** all of OneData / Canvas / Browser Session, or a deliberately cut subset? — see §5.

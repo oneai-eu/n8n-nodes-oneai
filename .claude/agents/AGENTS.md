@@ -91,7 +91,8 @@ operation set with a one-line justification each, the resources they group into,
 and — explicitly — **what it proposes to leave out and why**. Ends at the ⏸ GATE.
 
 Owner-given direction: **Chatting (very important)**, Spaces, Datasets, Audit Logs; **OneData is the
-most important missing feature**; no sign-in/OAuth surface at all.
+most important missing capability** and now ships as `dataset` / `datasetRow` — treat it as the
+worked example of a good answer, not as an open item; no sign-in/OAuth surface at all.
 
 ### `node-implementer` — one operation family per run
 
@@ -138,8 +139,10 @@ open it the next morning and try the thing. Replace the installed community pack
 restart it; production is `n8n.oneai.eu` and the `-ralf` container is a colleague's. OneAI to trace
 against is **devtest** on the same host.
 
-🔴 `oneai-devtest-n8n` serves `n8n.oneai.de` and `oneai-devtest-n8n-ralf` belongs to a colleague.
-Boot your own; touch neither. Never `--remove-orphans` on that host.
+On the bench, `docker restart` is allowed and is part of deploying; `stop`, `kill` and `rm` are not.
+🔴 Never `--remove-orphans` on that host — it deletes containers that are not in the compose file
+and has destroyed n8n there before. If you need an instance of your own instead, `n8n-node dev`
+boots one; that path does not exercise the real node type, so say so.
 
 **Owner authorisation (2026-09-03):** generate the credentials a trace needs on devtest — a **user
 API key** and a **gateway API key**. Both, because they validate differently: `oai_` against the hub

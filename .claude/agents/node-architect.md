@@ -20,6 +20,9 @@ example is the argument, and you should reason the same way about every candidat
 > pull data out of any of n8n's hundreds of app nodes and land it in a OneAI dataset. That is a
 > capability that does not exist without this node.
 
+🟢 That capability **has since shipped** (`dataset` / `datasetRow`). The quote stays because the
+*reasoning* is the template — not because the feature is still open. Do not re-propose it.
+
 Compare that with, say, a "list audit log pages" endpoint: real, but is there a workflow that wants
 it? Sometimes yes — say the reason.
 

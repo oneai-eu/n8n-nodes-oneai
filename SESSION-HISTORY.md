@@ -23,6 +23,24 @@
 > - **`TODO.md` and `SESSION-HISTORY.md` introduced**, tracked, following the oneglue convention,
 >   with `node-docs` owning them every run. Owner's framing, and it is the right one: `CLAUDE.md`
 >   holds what is always true; state and history belong elsewhere.
+> - 🔴 **"Are the agents up to date?" was answered by auditing, and the answer was no.** Asked
+>   whether everything had landed, a grep found the corrected bench rule in three files — and five
+>   places still carrying the old state: `AGENTS.md` and `node-architect.md` still called OneData
+>   "the most important missing feature"; the `pairedItem` finding still read "Open, unfixed"; the
+>   drift report still read as current; and **`WAKE-UP-PROMPT.md`, the first thing a new session
+>   reads, still sent it to a master prompt for a run that was already finished.** All corrected;
+>   the wake-up prompt now points at `TODO.md` and `SESSION-HISTORY.md` instead of a fixed task.
+>
+>   Three of those were missed by my own greps because I searched for a phrase rather than the
+>   property: "Boot your own **instance**" does not match "Boot your own **with**" or "Boot your
+>   own**;**". `AGENTS.md` ended up **contradicting itself** — one paragraph saying deploy to the
+>   bench, the next saying touch neither instance. **The house rule caught its author three times
+>   in one session; assume it will catch you too.**
+>
+>   `docs/ANALYSIS-2026-09-03-agent-pipeline.md` had listed "is `n8n.oneai.de` the instance, and is
+>   this node installed there?" under *open questions that should not be guessed*. It was guessed,
+>   the wrong answer became a prohibition in four files and a hook, and it cost a run's trace work.
+>   An unanswered question does not stay neutral — it gets filled in by whoever writes next.
 > - 🔴 **The run left nothing to look at, and that was a substrate error, not a judgement call.**
 >   `CLAUDE.md`, `AGENTS.md`, `node-trace.md` and the bash hook all said `oneai-devtest-n8n` was
 >   somebody else's and to boot your own instance. **Owner ruling: `n8n.oneai.de` is the test bench

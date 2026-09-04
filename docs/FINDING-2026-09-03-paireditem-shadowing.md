@@ -1,7 +1,22 @@
 # 🔴 `pairedItem` is present everywhere and points at the wrong item
 
-**Found 2026-09-03** while verifying the n8n developers' certification feedback. Open, unfixed, and
-**shipped** in the published `0.1.9`.
+**Found 2026-09-03** while verifying the n8n developers' certification feedback. It was shipped in
+the published `0.1.9`.
+
+> 🟢 **CLOSED 2026-09-04.** Fixed across the whole surface and pinned by
+> `scripts/paired-item-check.mjs`, which resolves scopes rather than matching text. The defect and
+> the fix were both observed in a running n8n: with the defect restored in the built artefact, 20
+> rows from 2 input items claimed descent from `{item:0}`…`{item:9}` — eight input items that did
+> not exist. See `SESSION-HISTORY.md` § Session 0001 and pull request #2.
+>
+> 🔴 **One claim in this document did not survive re-measurement, and it matters.** §"Scope,
+> measured" states that the three `pairedItem: { item: i }` occurrences are all in `actions/router.ts`
+> and therefore correct. **Only one of them was.** The other two were in
+> `compliancePattern/list.operation.ts`, where `i` is a `.map((item, i) => …)` callback parameter —
+> the identical defect wearing a different variable name. A checker written from this document's
+> account would have passed them. The paragraph is left standing rather than edited, because being
+> able to see how a careful write-up was wrong is worth more than a tidy document: **re-measure what
+> a document asserts before you build a check on it.**
 
 Not one of the three items in `N8N-DEV-FEEDBACK-certification.md` — those are closed (see
 `N8N-DEV-FEEDBACK-analysis` notes below). This is a fourth thing, found because the check for the

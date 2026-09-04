@@ -45,10 +45,11 @@ them. Two earlier analyses were wrong this way. `scripts/drift-check.mjs` parses
 🔴 **3. Measure `origin/main`.** The local checkout has been four commits stale while npm `latest`
 was two releases ahead. Two analyses reported the wrong thing because of it.
 
-🔴 **4. Presence is not correctness.** `pairedItem` is set in *every* operation and names the **wrong
-item** — the `map` callback shadows the parameter identifying the input item. Every check for the
-token is green on 65 broken files. n8n's own guidance snippet carries the same bug and we adopted it
-verbatim. Write rules that assert the property.
+🔴 **4. Presence is not correctness.** `pairedItem` was set in *every* operation and named the
+**wrong item** — the `map` callback shadowed the parameter identifying the input item, and every
+check for the token was green on 65 broken files. It is fixed and pinned by
+`scripts/paired-item-check.mjs`, and the rule outlives the defect: **write checks that assert the
+property, not the token.**
 
 🔴 **5. A renamed n8n parameter breaks saved workflows silently.** The node declares `version: 1` as a
 plain number, so every release lands directly on `typeVersion: 1` in every existing workflow, and
@@ -74,18 +75,23 @@ so parse its output. `0.1.9` passed on 2026-09-03.
 
 ## Your first task
 
-**`docs/orchestration/overnight-2026-09-04/MASTER-PROMPT.md`** — an autonomous overnight run in two
-stages, two draft pull requests:
+**Read `TODO.md` and the top of `SESSION-HISTORY.md`.** Between them they carry the current state:
+what is deployed on the bench, what is open, what needs the owner's ruling, and what the last run
+decided and why. `TODO.md`'s frontier block is the single fastest way to know where things stand.
 
-1. **Repair** everything already known broken. The sharpest one: `chat.create` sends `projectId` and
-   omits `spaceId`, because chats moved from projects to spaces — the URL never changed, so every
-   path-level check has been green while the call could not succeed. Plus the `pairedItem` sweep,
-   pinned by a structural test written **before** the fix.
-2. **Full dataset support** — nine endpoints, and one real design question: `POST …/rows` appends a
-   single row and there is no bulk endpoint, while `import-csv` sits beside it. Decide deliberately.
+Then ask the owner what this run is for. If they hand you a master prompt, it lives under
+`docs/orchestration/<run>/` and is untracked working material.
 
-Run the real pipeline and resolve the architect gate yourself; the owner is asleep. Record the ruling
-with its reasoning so it can be overturned in the morning with the argument visible.
+**Do not start by re-deriving the state from the code.** The tools below print it, and the two
+documents above explain it. Hand counts of this surface have been wrong three times.
+
+## Where a run ends
+
+🔴 **On the bench, not in a branch.** `https://n8n.oneai.de` is the test instance and exists so the
+owner can open the node the next morning and use it. Deploy the build there, leave a working
+credential and a demo workflow or two, and say in your summary what to click. A run that ends with
+pull requests and nothing running has finished half the job — that mistake has already been made
+once here. Production is `n8n.oneai.eu` and no run touches it.
 
 ## How the owner wants to be met in the morning
 
