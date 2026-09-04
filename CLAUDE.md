@@ -349,6 +349,8 @@ commit; archive anything you need outside the repository.
 | `docs/FINDING-2026-09-03-paireditem-shadowing.md` | the `pairedItem` defect — **closed**, and kept because the reasoning is the house standard. Read it with §"Presence is not correctness": three of its claims about which sites were correct did not survive re-measurement |
 | `docs/N8N-DEV-FEEDBACK-certification.md` | n8n's three certification items — **closed**, kept as guidance |
 | `docs/N8N-DEV-FEEDBACK-oli-agent-guidance.md` + `ANALYSIS-…` | Oli's rules, checked against the code |
+| `TODO.md` | the living state: what is open, what needs the **owner's** ruling, what is closed. Stable IDs, never renumbered |
+| `SESSION-HISTORY.md` | append-only, newest first: what each run decided and **why**, what it overturned, and what it did not reach |
 | `.claude/agents/AGENTS.md` | the agent set and how a run is orchestrated |
 
 Phase reports and orchestration prompts are **working material, never committed** — the same rule the

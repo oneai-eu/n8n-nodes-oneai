@@ -151,6 +151,11 @@ Prove the artefact first: a trace against a stale build is worse than no trace.
 README, `OneAi.node.json`, and the operation documentation a maintainer reads. This package is
 public, so its README is part of the product. Draft PR bodies in English, no AI attribution.
 
+🔴 Also **`TODO.md` and `SESSION-HISTORY.md`, every run** — both tracked. The history says what was
+decided, what was overturned, what a trace proved and what was **not** reached; the TODO carries the
+open loops with stable IDs. They are **data, not rules**: the substrate stays the owner's. Write
+them at the end of the RUN, not the end of the phase.
+
 ---
 
 ## HALT
