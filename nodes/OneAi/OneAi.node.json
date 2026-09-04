@@ -2,7 +2,7 @@
 	"node": "@oneai-eu/n8n-nodes-oneai.oneAi",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["AI", "Data & Storage", "Productivity"],
+	"categories": ["Data & Storage", "Productivity"],
 	"resources": {
 		"credentialDocumentation": [
 			{
