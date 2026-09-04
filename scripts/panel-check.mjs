@@ -44,7 +44,7 @@
  * other two checkers: no committed lockfile, no `node_modules` in a fresh clone, CI on Node 22.
  */
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -77,7 +77,31 @@ function read(file) {
 // R1 - `resource` and `operation` must be STATIC options, never loadOptions
 // ---------------------------------------------------------------------------
 
-const nodeSrc = read(NODE_FILE);
+/**
+ * The node file AND every version implementation beside it.
+ *
+ * 🔴 Reading only `OneAi.node.ts` was correct until the node became a `VersionedNodeType` and the
+ * properties moved into `v1/`. At that moment R1 stopped looking where the parameters actually
+ * live - a hole opened by the very change that split the file, and the same shape as the two holes
+ * the lineage checker had. Anything under `nodes/OneAi/` that is not an action is read.
+ */
+function readNodeSources() {
+	const parts = [read(NODE_FILE)];
+	const walk = (dir) => {
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const full = join(dir, entry.name);
+			if (entry.isDirectory()) {
+				if (entry.name !== 'actions') walk(full);
+			} else if (entry.name.endsWith('.ts') && full !== NODE_FILE) {
+				parts.push(readFileSync(full, 'utf8'));
+			}
+		}
+	};
+	walk(NODE_DIR);
+	return parts.join('\n');
+}
+
+const nodeSrc = readNodeSources();
 const modesSrc = read(MODES_FILE);
 
 for (const param of ['resource', 'operation']) {

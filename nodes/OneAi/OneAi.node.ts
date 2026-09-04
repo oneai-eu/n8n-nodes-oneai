@@ -1,137 +1,40 @@
-import type {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
+import { VersionedNodeType } from 'n8n-workflow';
 
-import * as artifact from './actions/artifact';
-import * as auditLog from './actions/auditLog';
-import * as chat from './actions/chat';
-import * as ai from './actions/ai';
-import * as compliancePattern from './actions/compliancePattern';
-import * as dataset from './actions/dataset';
-import * as datasetRow from './actions/datasetRow';
-import * as checkAuth from './actions/misc';
-import * as project from './actions/project';
-import * as reference from './actions/reference';
-import { router } from './actions/router';
-import * as space from './actions/space';
-import { operationProperties, resourceProperty } from './modes';
+import { OneAiV1 } from './v1/OneAiV1';
 
-export class OneAi implements INodeType {
-	description: INodeTypeDescription = {
-		displayName: 'oneAI',
-		name: 'oneAi',
-		icon: { light: 'file:oneai.svg', dark: 'file:oneai.dark.svg' },
-		group: ['transform'],
-		version: 1,
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Interact with the oneAI API',
-		defaults: {
-			name: 'oneAI',
-		},
-		inputs: [NodeConnectionTypes.Main],
-		outputs: [NodeConnectionTypes.Main],
-		credentials: [
-			{
-				name: 'oneAiApi',
-				required: true,
-			},
-		],
-		properties: [
-			resourceProperty,
-			...operationProperties,
-			...artifact.description,
-			...checkAuth.description,
-			...auditLog.description,
-			...chat.description,
-			...ai.description,
-			...compliancePattern.description,
-			...dataset.description,
-			...datasetRow.description,
-			...project.description,
-			...reference.description,
-			...space.description,
-		],
-		usableAsTool: true,
-	};
+/**
+ * The oneAI node, as a `VersionedNodeType`.
+ *
+ * Why this wrapper exists, given it changes nothing today: the node declares `version: 1` as a
+ * plain number, so every release lands directly on `typeVersion: 1` in every saved workflow —
+ * and `getParameterIssues` never validates option membership, so a renamed parameter does
+ * something different rather than failing. That made every breaking change either forbidden or
+ * silent.
+ *
+ * With this in place a version 2 can be added beside version 1, exactly as n8n's own HTTP Request
+ * node ships `1, 2, 3, 4, 4.1 … 4.5`. Existing workflows keep resolving to the implementation they
+ * were built against, and a breaking change becomes affordable rather than unthinkable.
+ *
+ * 🔴 `nodeVersions` is a map with no fallback. A key that has ever been saved into a user's
+ * workflow must stay in it for the life of the package.
+ */
+export class OneAi extends VersionedNodeType {
+	constructor() {
+		const baseDescription: INodeTypeBaseDescription = {
+			displayName: 'oneAI',
+			name: 'oneAi',
+			icon: { light: 'file:oneai.svg', dark: 'file:oneai.dark.svg' },
+			group: ['transform'],
+			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+			description: 'Interact with the oneAI API',
+			defaultVersion: 1,
+		};
 
-	methods = {
-		loadOptions: {
-			async getModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				try {
-					const credentials = await this.getCredentials('oneAiApi');
-					const baseUrl = (credentials.url as string).replace(/\/$/, '');
-					const response = await this.helpers.httpRequestWithAuthentication.call(
-						this,
-						'oneAiApi',
-						{
-							method: 'GET',
-							url: `${baseUrl}/api/chats/models`,
-							headers: { Accept: 'application/json' },
-						},
-					);
-					const models = response as Array<{
-						id: string;
-						name: string;
-						description: string;
-					}>;
-					return models.map((m) => ({
-						name: m.name,
-						value: m.id,
-						description: m.description,
-					}));
-				} catch {
-					return [{ name: 'Unauthenticated', value: '' }];
-				}
-			},
-			async getImageModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				try {
-					const credentials = await this.getCredentials('oneAiApi');
-					const baseUrl = (credentials.url as string).replace(/\/$/, '');
-					const response = await this.helpers.httpRequestWithAuthentication.call(
-						this,
-						'oneAiApi',
-						{
-							method: 'GET',
-							url: `${baseUrl}/api/image-models`,
-							headers: { Accept: 'application/json' },
-						},
-					);
-					const { models, defaultModelId } = response as {
-						models: Array<{ id: string; name: string; provider: string; isDefault: boolean }>;
-						defaultModelId: string;
-					};
-					const options: INodePropertyOptions[] = [
-						{
-							name: `Organization Default${defaultModelId ? ` (${defaultModelId})` : ''}`,
-							value: '',
-							description: 'Use the organization default image model',
-						},
-					];
-					for (const m of models) {
-						options.push({
-							name: `${m.name}${m.isDefault ? ' (default)' : ''}`,
-							value: m.id,
-							description: `Provider: ${m.provider}`,
-						});
-					}
-					return options;
-				} catch {
-					return [{ name: 'Unauthenticated', value: '' }];
-				}
-			},
-		},
-	};
+		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
+			1: new OneAiV1(baseDescription),
+		};
 
-	// continueOnFail() is handled per item inside router() (see actions/router.ts),
-	// which owns the item loop and try/catch for every resource/operation.
-	// eslint-disable-next-line @n8n/community-nodes/require-continue-on-fail
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		return router.call(this);
+		super(nodeVersions, baseDescription);
 	}
 }
