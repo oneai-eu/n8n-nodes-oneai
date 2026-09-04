@@ -71,7 +71,7 @@
 >   opening a saved workflow never exercises the search panel.
 > - 🔴 **"Are the agents up to date?" was answered by auditing, and the answer was no.** Asked
 >   whether everything had landed, a grep found the corrected bench rule in three files — and five
->   places still carrying the old state: `AGENTS.md` and `node-architect.md` still called OneData
+>   places still carrying the old state: `AGENTS.md` and `node-architect.md` still called oneData
 >   "the most important missing feature"; the `pairedItem` finding still read "Open, unfixed"; the
 >   drift report still read as current; and **`WAKE-UP-PROMPT.md`, the first thing a new session
 >   reads, still sent it to a master prompt for a run that was already finished.** All corrected;
@@ -113,7 +113,7 @@
 `node-docs`. The live trace was run by the orchestrator rather than `node-trace`.
 **Task:** an autonomous overnight run from `docs/orchestration/overnight-2026-09-04/MASTER-PROMPT.md`
 — *"Stage 1 — repair. Every defect we already know about, fixed and pinned. Stage 2 — datasets.
-Full OneData support, designed as a workflow author would want it."* The gate ruling was delegated
+Full oneData support, designed as a workflow author would want it."* The gate ruling was delegated
 explicitly: *"Resolve the gate yourself — the owner is asleep."*
 
 ### Result

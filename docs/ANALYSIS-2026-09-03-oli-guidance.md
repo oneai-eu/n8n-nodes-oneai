@@ -102,7 +102,7 @@ owner-only:
 
 > value = what a workflow developer can **compose** with the rest of n8n — not API coverage.
 
-The worked example is the argument: **OneData (datasets / tables)** is named the most important new
+The worked example is the argument: **oneData (datasets / tables)** is named the most important new
 feature *because* hundreds of other n8n nodes can pull data from other apps, and this node is what
 lands it in a oneAI dataset. The node's worth is as a junction in a graph, not as a mirror of an API.
 
@@ -117,4 +117,4 @@ for each endpoint is whether it makes a *workflow* possible that was not possibl
 |---|---|
 | 🔴 **May a release break existing workflows?** | Point 5 implies changing an existing operation's request shape is expected and fine. That is **internal**. It does not answer the workflow-visible case: renaming an operation or a parameter. Per the research, `version` is a plain number, so every release lands on `typeVersion: 1` in every existing workflow; a renamed **parameter** fails **silently**. Still an owner ruling. |
 | **Test framework, or lean on a live trace?** | Not addressed. n8n publishes no unit-test convention, but the rule docs anticipate vitest. The `pairedItem` finding argues for structural tests: it is precisely the class of defect no lint rule and no live trace of the happy path would surface. |
-| **Which OneData / Chat operations, concretely** | The direction is given; the operation list is design work for the architect phase. |
+| **Which oneData / Chat operations, concretely** | The direction is given; the operation list is design work for the architect phase. |

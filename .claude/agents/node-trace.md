@@ -138,7 +138,7 @@ unproven. Never print a key. Delete what you created and **verify the deletion**
    difference between a node that ships and a node that ships invisibly.
 2. **As an AI tool** — the node declares `usableAsTool`. Wire it under an AI Agent and inspect the
    tool schema it exposes.
-3. **The workflow that matters** — build the real thing, not a smoke test. For OneData: pull data
+3. **The workflow that matters** — build the real thing, not a smoke test. For oneData: pull data
    from another n8n node and land it in a oneAI dataset. That is the composition the node exists for.
 4. 🔴 **Item linking** — run the node over **several** input items and confirm each output row is
    linked to the input item it actually came from. This is the live half of the `pairedItem` finding,

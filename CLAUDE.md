@@ -357,7 +357,7 @@ in order to clean up, and the recovery is minting another one.
 of n8n* that was impossible before — this node's worth is as a junction in a graph, not as a mirror
 of an API. "14% of 409 endpoints" is not a deficiency to close.
 
-The worked example, from Oli, and it is the standard to judge the next feature by: **OneData
+The worked example, from Oli, and it is the standard to judge the next feature by: **oneData
 (datasets / tables)** was the most important missing capability, because hundreds of other n8n nodes
 can pull data out of other apps and this node is what lands it in a oneAI dataset. It now ships —
 resources `dataset` and `datasetRow` — so use it as the shape of a good answer, not as an open item.

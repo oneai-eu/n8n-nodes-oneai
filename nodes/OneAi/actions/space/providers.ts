@@ -25,7 +25,7 @@ export const PROVIDER_OPTIONS: INodePropertyOptions[] = [
 	{ name: 'MCP', value: 'mcp' },
 	{ name: 'N8N', value: 'n8n' },
 	{ name: 'oneAI Storage', value: 'seaweed' },
-	{ name: 'OneData (Data Tables)', value: 'oneData' },
+	{ name: 'oneData (Data Tables)', value: 'oneData' },
 	{ name: 'OneDrive or SharePoint', value: 'oneDrive' },
 	{ name: 'OneGlue', value: 'oneglue' },
 	{ name: 'Outlook', value: 'outlook' },

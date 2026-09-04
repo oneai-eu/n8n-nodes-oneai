@@ -108,6 +108,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						case 'exportPdf':
 							responseData = await artifact.exportPdf.execute.call(this, i);
 							break;
+						case 'exportPptx':
+							responseData = await artifact.exportPptx.execute.call(this, i);
+							break;
 						case 'getMarkdown':
 							responseData = await artifact.getMarkdown.execute.call(this, i);
 							break;
@@ -268,11 +271,20 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 				case 'project':
 					switch (operation) {
+						case 'archive':
+							responseData = await project.archive.execute.call(this, i);
+							break;
 						case 'get':
 							responseData = await project.get.execute.call(this, i);
 							break;
+						case 'instantiateTemplate':
+							responseData = await project.instantiateTemplate.execute.call(this, i);
+							break;
 						case 'list':
 							responseData = await project.list.execute.call(this, i);
+							break;
+						case 'unarchive':
+							responseData = await project.unarchive.execute.call(this, i);
 							break;
 						case 'update':
 							responseData = await project.update.execute.call(this, i);

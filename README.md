@@ -78,7 +78,7 @@ Create and manage AI chat conversations in the hub.
 | List        | List chats with optional filtering                                  |
 | Update      | Update chat details (rename, switch branch, or set persona/agent)   |
 
-🔴 **A chat lives in a space, and only in a space whose provider is `Project`.** Passing any other space ID — an oneAI Storage space, a OneData space — is rejected with `Chats can only be created in projects.` **List** filters by space ID for the same reason.
+🔴 **A chat lives in a space, and only in a space whose provider is `Project`.** Passing any other space ID — an oneAI Storage space, a oneData space — is rejected with `Chats can only be created in projects.` **List** filters by space ID for the same reason.
 
 ### Compliance Pattern (5 operations)
 
@@ -94,7 +94,7 @@ Content policies for the EU AI Act: the default patterns oneAI ships, plus your 
 
 ### Dataset (5 operations)
 
-OneData tables inside a space: schema, CSV import and export. A dataset lives in a space whose provider is **OneData (Data Tables)**, which `Space > Create` can create.
+oneData tables inside a space: schema, CSV import and export. A dataset lives in a space whose provider is **oneData (Data Tables)**, which `Space > Create` can create.
 
 | Operation      | Description                                                          |
 | -------------- | -------------------------------------------------------------------- |
@@ -108,7 +108,7 @@ Column types are DuckDB types: `BIGINT`, `BOOLEAN`, `DATE`, `DOUBLE`, `JSON`, `T
 
 ### Dataset Row (5 operations)
 
-Rows in a OneData table. See [Working with datasets](#working-with-datasets) below for the one choice that matters.
+Rows in a oneData table. See [Working with datasets](#working-with-datasets) below for the one choice that matters.
 
 | Operation    | Description                                                       |
 | ------------ | ----------------------------------------------------------------- |
@@ -167,7 +167,7 @@ Hub spaces and the files in them. A space is backed by a storage provider, and t
 | Transfer File   | Move or copy a file between spaces   |
 | Upload File     | Upload a file to a space             |
 
-**Providers**, as `Create` offers them and `List` filters on them: oneAI Storage, OneData (Data Tables), Project, ClickUp, Dynamics Sales, Fireflies, Forgejo, GitHub, Google Drive, HTTP API, HubSpot, Lexoffice, MCP, N8N, OneDrive or SharePoint, OneGlue, Outlook, Plytix, SMB Share, Weclapp.
+**Providers**, as `Create` offers them and `List` filters on them: oneAI Storage, oneData (Data Tables), Project, ClickUp, Dynamics Sales, Fireflies, Forgejo, GitHub, Google Drive, HTTP API, HubSpot, Lexoffice, MCP, N8N, OneDrive or SharePoint, OneGlue, Outlook, Plytix, SMB Share, Weclapp.
 
 Providers that authenticate through OAuth additionally need an authorization code and a signed state, both issued by oneAI outside n8n. Providers this node does not model as individual fields can be configured through the **Provider Options (JSON)** field.
 
@@ -225,7 +225,7 @@ Operations that **read** one: `AI > Edit Image`, `AI > Transcribe Audio`, `Datas
 ## Features
 
 - **Multi-model AI access** — query multiple AI models through a single node, with the model list loaded live from your instance
-- **OneData datasets** — create typed tables and land rows from any other n8n node in them, one at a time with row IDs or in bulk
+- **oneData datasets** — create typed tables and land rows from any other n8n node in them, one at a time with row IDs or in bulk
 - **Automatic pagination** — list operations transparently handle paginated API responses
 - **Storage integration** — spaces backed by OneDrive/SharePoint, Google Drive, GitHub, SMB, and a range of business applications
 - **File management** — upload, download, transfer and embed files across spaces

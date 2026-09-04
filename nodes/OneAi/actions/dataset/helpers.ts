@@ -57,7 +57,7 @@ export type TableSummary = {
  * reading the raw keys: `id, name, canWrite, isSpaceAdmin, provider, type, dataSpaceId, isActive,
  * archived, createdAt, updatedAt`. The spec was right and the prompt was wrong.
  *
- * 🔴 Do not reach for `dataSpaceId`. It looks like the OneData identifier and is `null` on a real
+ * 🔴 Do not reach for `dataSpaceId`. It looks like the oneData identifier and is `null` on a real
  * oneData space; `id` is the value the `/api/spaces/{spaceId}/tables` endpoints accept, verified
  * against a space whose tables were created through it.
  */

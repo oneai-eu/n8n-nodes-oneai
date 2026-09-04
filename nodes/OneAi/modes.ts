@@ -20,8 +20,8 @@ export const RESOURCES: ResourceDefinition[] = [
 	{ name: 'Artifact', value: 'artifact', description: 'Hub artifacts (markdown, PDFs, distilled documents)', gateway: false },
 	{ name: 'Chat', value: 'chat', description: 'Hub chat management', gateway: false },
 	{ name: 'Compliance Pattern', value: 'compliancePattern', description: 'Hub compliance patterns (EU AI Act content policies)', gateway: false },
-	{ name: 'Dataset', value: 'dataset', description: 'OneData tables in a space: schema, CSV import and export', gateway: false },
-	{ name: 'Dataset Row', value: 'datasetRow', description: 'Rows in a OneData table: append, read, update, delete', gateway: false },
+	{ name: 'Dataset', value: 'dataset', description: 'Tables in a oneData space: schema, CSV import and export', gateway: false },
+	{ name: 'Dataset Row', value: 'datasetRow', description: 'Rows in a oneData table: append, read, update, delete', gateway: false },
 	{ name: 'Miscellaneous', value: 'miscellaneous', description: 'Authentication checks and helpers', gateway: true },
 	{ name: 'Project', value: 'project', description: 'Hub projects', gateway: false },
 	{ name: 'Reference', value: 'reference', description: 'Browse hub spaces and files as chat references', gateway: false },
@@ -91,6 +91,7 @@ export const OPERATIONS: Record<string, OperationDefinition[]> = {
 		{ name: 'Create', value: 'create', description: 'Create an artifact from a file', action: 'Create an artifact', gateway: false },
 		{ name: 'Delete', value: 'delete', description: 'Delete an artifact from a space', action: 'Delete an artifact', gateway: false },
 		{ name: 'Export PDF', value: 'exportPdf', description: 'Export an artifact as a PDF', action: 'Export artifact as PDF', gateway: false },
+		{ name: 'Export PPTX', value: 'exportPptx', description: 'Export a presentation artifact as a PPTX file', action: 'Export artifact as PPTX', gateway: false },
 		{ name: 'Get Markdown', value: 'getMarkdown', description: 'Get the markdown content of an artifact', action: 'Get artifact markdown', gateway: false },
 		{ name: 'List All', value: 'listAll', description: 'List all artifacts with optional filtering', action: 'List all artifacts', gateway: false },
 		{ name: 'List by Space', value: 'listBySpace', description: 'List artifacts in a specific space', action: 'List artifacts in space', gateway: false },
@@ -128,13 +129,16 @@ export const OPERATIONS: Record<string, OperationDefinition[]> = {
 		{ name: 'Check Authentication', value: 'checkAuth', description: 'Check the authenticated user and return their details', action: 'Check authenticated user', gateway: true },
 	],
 	// `Create` and `Delete` were removed: oneAI no longer serves `POST /api/projects` or
-	// `DELETE /api/projects/{projectId}`. Projects are now created from a template
-	// (`POST /api/projects/templates/{templateId}/instantiate`) and retired by archiving them
-	// (`POST /api/projects/bulk`). Neither is a drop-in replacement, so neither is guessed at
-	// here - see the pull request for the proposal to add them as their own operations.
+	// `DELETE /api/projects/{projectId}`. The capability is back under the names of the endpoints
+	// that do exist - `Instantiate Template` creates a project from a template, `Archive` retires
+	// one - and deliberately not under the old names, because neither is a drop-in replacement:
+	// instantiating takes a template ID rather than a name, and archiving is reversible.
 	project: [
+		{ name: 'Archive', value: 'archive', description: 'Archive a project', action: 'Archive a project', gateway: false },
 		{ name: 'Get', value: 'get', description: 'Get a project by ID', action: 'Get a project', gateway: false },
+		{ name: 'Instantiate Template', value: 'instantiateTemplate', description: 'Create a new project from a project template', action: 'Create a project from a template', gateway: false },
 		{ name: 'List', value: 'list', description: 'List all projects', action: 'List all projects', gateway: false },
+		{ name: 'Unarchive', value: 'unarchive', description: 'Restore a project from the archive', action: 'Unarchive a project', gateway: false },
 		{ name: 'Update', value: 'update', description: 'Update a project', action: 'Update a project', gateway: false },
 	],
 	reference: [

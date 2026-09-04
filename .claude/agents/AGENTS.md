@@ -90,7 +90,7 @@ Input: the drift report, the OpenAPI snapshot, `nodes-base` for shape precedent.
 operation set with a one-line justification each, the resources they group into, the parameter shapes,
 and — explicitly — **what it proposes to leave out and why**. Ends at the ⏸ GATE.
 
-Owner-given direction: **Chatting (very important)**, Spaces, Datasets, Audit Logs; **OneData is the
+Owner-given direction: **Chatting (very important)**, Spaces, Datasets, Audit Logs; **oneData is the
 most important missing capability** and now ships as `dataset` / `datasetRow` — treat it as the
 worked example of a good answer, not as an open item; no sign-in/OAuth surface at all.
 

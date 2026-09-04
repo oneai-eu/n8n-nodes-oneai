@@ -1319,7 +1319,7 @@ guidance pulls in two directions at once (§7.3): be CRUD-complete *within* a re
 resources exist. Mechanically porting every new oneAI endpoint would make the node worse while making a drift
 check green. The prior analysis (`docs/ANALYSIS-2026-09-03-agent-pipeline.md` §5) reached the same conclusion
 independently. **Someone has to decide the cut before an architect agent runs**, and the specific pending
-question is OneData / Canvas / Browser Session: all of it, or a task-shaped subset?
+question is oneData / Canvas / Browser Session: all of it, or a task-shaped subset?
 
 **P-2 · 🔴 May a future release break existing workflows?** §3 makes the mechanics exact, so the question is now
 purely commercial:

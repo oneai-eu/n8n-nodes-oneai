@@ -11,7 +11,7 @@
 > which are the owner's. Nothing here overrides them.
 
 **Frontier (2026-09-04):** published `0.1.9`; two draft PRs open and unmerged —
-**#2** (API drift + `pairedItem` repair, → `main`) and **#3** (OneData datasets, → #2, stacked).
+**#2** (API drift + `pairedItem` repair, → `main`) and **#3** (oneData datasets, → #2, stacked).
 Nothing released. All gates green on #3: drift 0 over 57 dispatched operations, lineage 0 over 99
 sites, lint/build/tsc clean. See `SESSION-HISTORY.md` § Session 0001.
 
@@ -126,7 +126,7 @@ renders, its credential is selectable and it executes from the interface, not on
   Session 0001, PR #2.
 - ✅ **13 drift failures + 2 warnings** across `chat`, `space`, `project` and `artifact` — 0.
   Session 0001, PR #2.
-- ✅ **OneData datasets** — ten operations across `dataset` and `datasetRow`. Session 0001, PR #3.
+- ✅ **oneData datasets** — ten operations across `dataset` and `datasetRow`. Session 0001, PR #3.
   *Carried forward:* BL-2, BL-5, and OWNER-6 (BL-3 closed with a defect, not a clean answer).
 - ✅ **`dist/tsconfig.tsbuildinfo` shipped to npm** — and the first fix for it made the build emit
   no JavaScript at all while reporting success. `incremental` is now off and must stay off.

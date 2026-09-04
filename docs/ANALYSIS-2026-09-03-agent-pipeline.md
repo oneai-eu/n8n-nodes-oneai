@@ -1,7 +1,7 @@
 # n8n-nodes-oneai — first analysis: can the oneAI agent pipeline maintain this node?
 
 **Date:** 2026-09-03 · **Status:** analysis only, nothing built, nothing decided.
-**Origin:** owner question — oneAI ships new capabilities fast (OneData, Canvas, Browser Session, …) and
+**Origin:** owner question — oneAI ships new capabilities fast (oneData, Canvas, Browser Session, …) and
 this node cannot keep up. Could the six-agent pipeline, orchestration-prompt template, autonomous hooks and
 live-trace agent that were built for the connector work be applied here?
 
@@ -26,7 +26,7 @@ reshaped rather than copied, and the real problem is not "port the missing featu
 **Operations per resource:** space 17 · team 7 · project 6 · member 6 · artifact 6 · chat 5 · apiKey 5 ·
 organization 4 · stats 2 · reference 2 · complianceLlm 2 · auditLog 2 · ai 2 · misc 1
 
-**Absent, and named by the owner as the gap:** OneData · Canvas · Browser Session.
+**Absent, and named by the owner as the gap:** oneData · Canvas · Browser Session.
 
 ---
 
@@ -76,7 +76,7 @@ be built first — before any feature work.** It also produces the input the arc
 ## 5. 🔴 The judgement that matters most: what NOT to expose
 
 oneAI's API is far larger than 67 operations. **A node that mirrors an entire API is unusable in n8n.**
-Workflow authors need *task-shaped* operations — "run a chat", "upload into a space", "query a OneData
+Workflow authors need *task-shaped* operations — "run a chat", "upload into a space", "query a oneData
 table" — not CRUD over every resource.
 
 So the architecture phase's hardest question is not "what is missing" but **"what belongs in a workflow
@@ -112,7 +112,7 @@ check green.
    does not stay neutral; it gets filled in by whoever writes the next document.
 2. **Release path:** npm publish on tag, or manual? Who owns the npm organisation?
 3. **Compatibility:** may `v0.2` break existing workflows, or must it stay additive?
-4. 🔴 **Scope:** all of OneData / Canvas / Browser Session, or a deliberately cut subset? — see §5.
+4. 🔴 **Scope:** all of oneData / Canvas / Browser Session, or a deliberately cut subset? — see §5.
 5. **Repository home:** stay on GitHub, or move to Forgejo with everything else?
 
 ---

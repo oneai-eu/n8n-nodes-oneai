@@ -16,7 +16,7 @@ n8n. The question for every candidate is:
 The node's worth is as a **junction in a graph of hundreds of other n8n nodes**. Oli's worked
 example is the argument, and you should reason the same way about every candidate:
 
-> OneData (datasets / tables) is the most important missing feature, because a workflow author can
+> oneData (datasets / tables) is the most important missing feature, because a workflow author can
 > pull data out of any of n8n's hundreds of app nodes and land it in a oneAI dataset. That is a
 > capability that does not exist without this node.
 
@@ -28,7 +28,7 @@ it? Sometimes yes — say the reason.
 
 ## What is already ruled
 
-**In, by the owner:** Chatting (**very important**), Spaces, Datasets/OneData, Audit Logs.
+**In, by the owner:** Chatting (**very important**), Spaces, Datasets/oneData, Audit Logs.
 **Out, by the owner:** sign-in, sign-up, OAuth — the node authenticates with an API key. That
 settles `auth`, `passkeys`, `subscription`/Stripe and `scim` without discussion.
 
