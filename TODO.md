@@ -31,28 +31,21 @@ renders, its credential is selectable and it executes from the interface, not on
 
 ## ▶ Needs the owner — blocking nothing, but nobody else can rule
 
-- 🔴 **OWNER-6 · The node cannot be found in the nodes panel, and this shipped in `0.1.9`.**
-  Confirmed by the owner searching "oneai" on the bench and finding nothing, with the mechanism
-  established: n8n's node creator is **action-first**, and it builds a node's actions from the
-  **static `options` arrays** of `resource` and `operation`. `0.1.9` moved both to `loadOptions`, so
-  the node now produces **zero actions** and is not surfaced by search at all. Measured on the
-  bench: oneAI has 0 static options and 0 action strings; Slack has 7/17 options and 7; even the
-  minimal shipped Perplexity node has 1/1 and 4. `npm pack @oneai-eu/n8n-nodes-oneai@0.1.8` confirms
-  the previous release had static options and **no** `loadOptionsMethod` at all.
+- ✅ **OWNER-6 · FIXED and deployed — the node is findable again.** `resource` and `operation` are
+  generated as **static options** from `modes.ts` (the same source `isOperationAllowed` validates
+  against), each operation carrying its `action` string. Measured on the bench: **0 actions → 57**.
+  Values are byte-identical to what `loadOptions` returned, so nothing is renamed and no saved
+  workflow changes meaning. Session 0001, PR #2.
 
-  **This is live on npm now** — every instance that upgraded to `0.1.9` has a node its users cannot
-  find, which for a published package is close to the worst available failure. It is not caused by
-  either open pull request; both inherit it.
+  🔴 **What it cost, deliberately, and what you may still want to rule:** a static list cannot be
+  filtered by the credential, so a Gateway-only credential now shows hub operations in the dropdown;
+  `isOperationAllowed` refuses them at runtime with a message naming the reason. That filtering was
+  the whole purpose of the `loadOptions` change in `0.1.9`.
 
-  **Recommended fix, and it is cheap:** generate the `resource` / `operation` `options` arrays
-  statically from `modes.ts` (the same source `filterResources` / `filterOperations` already use) and
-  give each operation its `action` string. 🟢 **Safe on `typeVersion: 1`** — the values are
-  identical, so nothing is renamed and no saved workflow changes meaning.
-
-  **The trade-off is yours to rule:** static options cannot be filtered by the credential, so a
-  Gateway-only user would see hub operations in the dropdown and meet the router's existing
-  `NodeOperationError` if they pick one. That is what `loadOptions` was bought for. Weigh a worse
-  dropdown for Gateway users against an invisible node for everyone.
+  **Side effect, handled:** with static options n8n injects its own "Custom API Call" entry. Choosing
+  it produced n8n's internal `Could not get parameter "operation"`; the router now recognises the
+  sentinel and explains what to do instead. Implementing Custom API Call for real would be a
+  feature — see BL-10.
 
 - **OWNER-1 · Merge order for #2 and #3.** #3 is stacked on #2 and carries the documentation for
   **both**. 🔴 Do not cut a release from #2 alone: its README still lists the `Project > Create` and
@@ -99,6 +92,10 @@ renders, its credential is selectable and it executes from the interface, not on
   **39 interpolations across 36 older operation files** still go in raw (measured 2026-09-04).
   Not privilege escalation — an upstream expression can only redirect within the author's own
   authority — but it is inconsistent. *(P3)*
+- **BL-10 · Implement "Custom API Call" instead of refusing it.** n8n injects the option for any
+  node with static options and a credential; we answer with a clear refusal. Making it work would
+  give workflow authors any OneAI endpoint the node does not expose, using the credential they
+  already have. *(P3)*
 - **BL-9 · Gateway-plan behaviour is unproven.** Both key classes were exercised, but the `oai-gk_`
   key was minted against a `team`-plan org, so prefix routing is proven and `plan-gate` behaviour is
   not. Needs a genuine Gateway-plan org on devtest. *(P3)*
