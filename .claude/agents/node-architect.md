@@ -56,7 +56,15 @@ You may propose additions to the "in" list. You may not overrule the "out" list.
   reviewer cannot reconstruct
 - anything that would rename or remove an existing operation or parameter, flagged separately: a
   renamed parameter breaks existing workflows **silently**
-- what you could not settle, as `UNKNOWN`, with what would settle it
+- what you could not settle, as `UNKNOWN`, with what would settle it — and 🔴 **settle it against
+  `openapi/openapi.json` first.** It is committed, and it answers more than it looks like it will: a
+  `type: "object"` with `additionalProperties: false` already decides whether an endpoint accepts an
+  array, without a network call.
+- 🔴 **Write any ruling that depends on an `UNKNOWN` as explicitly conditional on it**, naming the
+  observation that would reverse it. This is what makes a wrong ruling cheap: on 2026-09-03 a
+  proposed refusal was overturned in one message because the decision itself said "overturn if
+  UNKNOWN 7.2 shows `import-csv` parses JSON cells correctly" — and it did. A ruling stated flatly
+  would have needed the whole argument re-litigated, or would simply have shipped.
 
 End at **⏸ GATE**. Selection is the owner's ruling. Present it as a decision to take, not as a plan
 to approve.

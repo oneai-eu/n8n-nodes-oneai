@@ -25,12 +25,23 @@ into a variable, never passed as a parameter, never logged. There are two classe
 differently: `oai_` against the hub (`/api/auth/check`), `oai-gk_` against the OneAI Gateway — a
 check that only reasons about one leaves the other unexamined.
 
-**2. 🔴 What reaches the workflow author when we throw.** *The open question, and the highest-value
-thing you can settle.*
-`transport/index.ts` passes provider errors through. Does an axios-shaped error handed to
-`NodeApiError` carry the `Authorization` **header** into the output panel or the persisted execution
-record? Executions are stored and shared. Establish this from the code, and say plainly if only a
-live run can settle it — the trace can, in about thirty minutes.
+**2. What reaches the workflow author when we throw.** *Settled 2026-09-03 — and it must be
+re-checked on every `n8n-workflow` upgrade, because the safety is accidental.*
+
+**Answer: no.** An axios-shaped error handed to `NodeApiError` does not carry the `Authorization`
+header into the output panel or the persisted execution record. The header is not merely unserialised
+— it is **unreachable** from the object n8n persists, verified by walking every own property,
+enumerable and not, plus symbols.
+
+🔴 **But the reason is one line of third-party code.** `ExecutionBaseError` declares a class field
+`cause;`, which redefines that own property to `undefined` *after* `super()` has set it, and its
+re-assignment branch does not fire for an `Error`. Delete that declaration upstream and the
+AxiosError becomes reachable through `this.cause`, `toJSON()` emits it, and the header lands in every
+execution record of every node using `NodeApiError`. **Re-verify this whenever `n8n-workflow` moves**,
+and treat a version bump as reopening the question.
+
+What *does* reach the record: `context.data`, set verbatim from `error.response.data`. So the
+residual exposure is whatever OneAI puts in an error body — a question for the API, not the node.
 
 **3. What we put into workflow output.**
 Node output is persisted and visible to anyone who can open the execution. Provider error bodies land

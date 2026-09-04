@@ -46,6 +46,19 @@ Then falsify: break the thing each test guards and count the reds. Report **expe
 shortfall explained honestly is worth more than a number rounded up — and a mutation that reddens
 nothing means the test is decorative.
 
+🔴 **Ask what the checker does not READ, not only what it does not assert.** A rule is also defeated
+by a file the scanner never opens. `paired-item-check` once globbed `*.operation.ts` only; moving the
+shadowing defect into a `helpers.ts`, while leaving one correct site behind in the operation file to
+satisfy the "emits lineage at all" rule, produced `tsc` 0, drift 0 and `RESULT: clean, exit 0` on
+genuinely wrong lineage. That mutation — **relocate the defect into a file the checker's own glob
+excludes** — belongs in every validation run.
+
+🔴 **Prove the gate is running before you report that it passed.** A gate that has stopped running
+and a gate that passes are indistinguishable from the exit code. Introduce the violation the rule
+exists to catch — a lowercase description for the lint rule, say — confirm the tool reports it at the
+expected file and line, then restore. On 2026-09-03 two agents disagreed about whether `npm run lint`
+passed; only this settled it.
+
 Specific things worth pinning here, because nothing else catches them:
 - an operation reachable through the **router**, not merely present as a file
 - `resource`/`operation` strings agreeing across operation file, router and `modes.ts`

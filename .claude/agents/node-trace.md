@@ -25,6 +25,35 @@ so.**
 `n8n-node dev` compiles the node and boots a **local** n8n with it — one command, the supported path.
 (Manually: `npm run build` → `npm link` → `npm link <package>` in `~/.n8n/custom` → `n8n start`.)
 
+### A headless recipe that works, and four things that cost a night to find
+
+`n8n-node dev` wants a terminal. For an autonomous run, drive n8n by CLI instead. Every item below
+was established the hard way on 2026-09-03 — take them as facts, not as a starting point to rederive:
+
+1. 🔴 **`n8n execute --file` does not exist in n8n 2.x.** It answers `"--id" has to be set!`. The
+   working sequence is `import:credentials` → `import:workflow` → `execute --id=<workflow id>`.
+2. 🔴 **The cached n8n's `sqlite3` has no compiled native binding** (`Could not locate the bindings
+   file`), so the default database fails to initialise. Point n8n at Postgres instead —
+   `DB_TYPE=postgresdb` against a throwaway container is enough, and it touches nothing about the
+   node. Remove the container afterwards.
+3. 🔴 **A node loaded from a custom directory registers as `CUSTOM.oneAi`, not under the package
+   name.** `CustomDirectoryLoader` sets `packageName = 'CUSTOM'`, while a genuinely installed
+   community package goes through `PackageDirectoryLoader`, which uses `packageJson.name` and yields
+   `@oneai-eu/n8n-nodes-oneai.oneAi`. Your workflow JSON must say `CUSTOM.oneAi` — and **the type
+   string a real user's workflow stores is therefore NOT exercised**. Say so in the report; it is a
+   real limit, not a detail.
+4. **`n8n execute` prints nothing useful, but it persists the run.** Read the truth out of the
+   database: `execution_entity` for status, `execution_data` for the rows. The payload is encoded
+   with `flatted` — every value is an index into one flat array — so hydrate it with a memoised
+   resolver before reading `pairedItem`. A naive depth-limited walk silently truncates before it
+   reaches the interesting part.
+
+### 🔴 Cleanup order: data first, credentials last
+
+Delete the spaces, tables, chats and workflows you created **before** the API keys. Deleting the keys
+first locks you out of the API you need to clean up with, and the recovery is minting another key —
+which is one more credential to create, use and prove dead. Learned by doing it in the wrong order.
+
 OneAI to trace against: **devtest**. `n8n.oneai.de` resolves to the same machine.
 
 🔴 **`oneai-devtest-n8n` serves `n8n.oneai.de`; `oneai-devtest-n8n-ralf` belongs to a colleague.**
@@ -49,6 +78,15 @@ unproven. Never print a key. Delete what you created and **verify the deletion**
 4. 🔴 **Item linking** — run the node over **several** input items and confirm each output row is
    linked to the input item it actually came from. This is the live half of the `pairedItem` finding,
    and a single-item run cannot show it.
+
+   **Falsify it, do not just observe it.** A passing trace shows the current behaviour; it does not
+   show that the behaviour would have been different when broken. Reintroduce the defect **in the
+   built artefact** (`dist/…/*.operation.js` — never the source), re-run the identical workflow, and
+   tabulate the two results; then rebuild from source and confirm the artefact is clean. On
+   2026-09-03 this turned "the fix works" into evidence: 20 rows from 2 input items claimed descent
+   from `{item:0}`…`{item:9}` — eight input items that did not exist — where the fixed build named
+   item 0 ten times and item 1 ten times. Choose an operation returning **many rows per item**; one
+   that returns a single row cannot show the difference.
 5. 🔴 **The credential in a failure** — point the credential at something that returns 401, run it,
    and read the output panel **and the persisted execution record**. Does the `Authorization` header
    appear? Thirty minutes, and it settles the one open credential question.
