@@ -132,11 +132,17 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 				case 'auditLog':
 					switch (operation) {
+						case 'export':
+							responseData = await auditLog.export.execute.call(this, i);
+							break;
 						case 'get':
 							responseData = await auditLog.get.execute.call(this, i);
 							break;
 						case 'list':
 							responseData = await auditLog.list.execute.call(this, i);
+							break;
+						case 'review':
+							responseData = await auditLog.review.execute.call(this, i);
 							break;
 						default:
 							throw new NodeOperationError(

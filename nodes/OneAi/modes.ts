@@ -98,8 +98,10 @@ export const OPERATIONS: Record<string, OperationDefinition[]> = {
 		{ name: 'List by Space', value: 'listBySpace', description: 'List artifacts in a specific space', action: 'List artifacts in space', gateway: false },
 	],
 	auditLog: [
+		{ name: 'Export', value: 'export', description: 'Export audit logs as a ZIP archive holding one CSV or JSON file. The columns are chosen per export, and all of them are included by default.', action: 'Export audit logs', gateway: false },
 		{ name: 'Get', value: 'get', description: 'Get an audit log by ID', action: 'Get an audit log', gateway: false },
 		{ name: 'List', value: 'list', description: 'List audit logs with optional filtering', action: 'List audit logs', gateway: false },
+		{ name: 'Review', value: 'review', description: 'Record an admin verdict on a log the compliance layer flagged, blocking or unblocking the request it held', action: 'Submit a review verdict on an audit log', gateway: false },
 	],
 	chat: [
 		{ name: 'Create', value: 'create', description: 'Create a new chat', action: 'Create a chat', gateway: false },
