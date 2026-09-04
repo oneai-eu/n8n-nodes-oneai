@@ -55,6 +55,14 @@ and silently does nothing. `docker restart` is the only container verb allowed o
   trusted publishing — so there is **no token to revoke** and the entire control surface is who may
   create a release. A compromise of any one of the five accounts ships to npm with a valid
   provenance attestation, which is the trust signal. Also: no `environment:` gate on the publish job.
+- **OWNER-9 · CLOSED — v0.3.0 scope ruled by the owner, 2026-09-04.** **Block 1 + Block 3 only.**
+  Agent Builder (`api/agent-definitions`) is **deferred: the feature is not finished in oneAI yet**,
+  and shipping against it would have been premature. 🔴 Second reason, which makes the ruling the
+  safer one either way: a `typeVersion: 1` operation must stay in the `nodeVersions` map for the
+  life of the package, so `agent:list` would have **frozen the resource name `agent` and its
+  operation names against an API still in motion** — and a later rename of a parameter breaks
+  workflows *silently*. Deferred to BL-22.
+
 - **OWNER-7 · Does v0.3.0 trade away the package's zero-dependency property?** An
   `oneAI Chat Model` sub-node (~150 lines) would make **every AI Agent, LLM Chain and Information
   Extractor in n8n** run on oneAI — nothing else proposed comes close in reach.
@@ -68,7 +76,8 @@ and silently does nothing. `docker restart` is the only container verb allowed o
   🔴 `usableAsTool` **cannot hide an operation from the tool variant** —
   `UsableAsToolDescription.replacements` is `Partial<Omit<INodeTypeBaseDescription,'usableAsTool'>>`
   and `INodeTypeBaseDescription` has no `properties` field. So `agent:confirm` and
-  `auditLog:review` would be reachable by an LLM in one hop. Precedent, measured: n8n's own
+  `auditLog:review` would be reachable by an LLM in one hop. **Narrowed by the owner's ruling of
+  2026-09-04:** Agent Builder is out of v0.3.0, so this now concerns **`auditLog:review` alone**. Precedent, measured: n8n's own
   `SlackV2` is `usableAsTool: true` and exposes `archive`, `kick` and `delete`. Recommendation: ship
   with explicit naming and a README warning — but it is the owner's call, because oneAI is a
   compliance platform and an approval verdict is a different class of act. (Same finding is why
@@ -118,6 +127,15 @@ and silently does nothing. `docker restart` is the only container verb allowed o
   `chat:get` is the discovery path (`blobId` appears twice there and 0 times in the
   `/api/chats/{chatId}/http` response). A user meets both as bugs, not as missing features. First
   candidate block for v0.3.0. *(P2)*
+
+- **BL-22 · Agent Builder (`api/agent-definitions`), deferred from v0.3.0.** 16 endpoints; ~7 were
+  proposed (`list`, `get`, `run`, `getRun`, `listRuns`, `listPending`, `confirm`). Deferred by the
+  owner because the feature is not finished in oneAI. **Revisit when the platform side settles** —
+  and re-take the spec snapshot first, because the shapes are expected to move. Known constraint to
+  carry forward: `POST …/runs` has body `{}` with `additionalProperties: false`, so **a run cannot
+  be parameterised**. Consequence left standing meanwhile: `chat:create` / `chat:update` ship an
+  `agentId` parameter with **no operation that yields an ID** — handled for now by saying in the
+  parameter description where to find one, not by shipping a premature operation. *(P2)*
 
 - **BL-9 · Gateway-plan behaviour is unproven.** Both key classes were exercised, but the `oai-gk_`
   key was minted against a `team`-plan org, so prefix routing is proven and `plan-gate` behaviour is

@@ -48,6 +48,15 @@ compliance loop — ~20 operations, no new dependency, no new `typeVersion`. The
 is deliberately *not* folded in: it is a spike (OWNER-7) whose one question is worth more than any
 operation on the list.
 
+**Owner ruling, same day — v0.3.0 is Block 1 + Block 3.** Agent Builder is deferred: *not finished
+in oneAI yet*, so building against it would be premature. The ruling is the safer one for a second
+reason the analysis had flagged in passing but not weighted enough: a `typeVersion: 1` operation
+must remain in the `nodeVersions` map for the life of the package, so even a single `agent:list`
+would have **frozen the resource name `agent` and its operation names against an API still in
+motion**. Scope becomes **10 operations** (64 → 74). OWNER-8 narrows with it — `agent:confirm` is
+gone, so the LLM-reachable-approval question now concerns `auditLog:review` alone. Deferred work
+carried to BL-22.
+
 **Not reached:** whether `GET …/files/extracted` works before embedding completes (one live devtest
 request); whether `ChatOpenAIResponses` completes a tool-calling round trip against oneAI. The spec
 snapshot is from 2026-09-03 and must be re-taken before implementation.
