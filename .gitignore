@@ -1,6 +1,9 @@
 /.pnpm-store
 /node_modules
-/package-lock.json
+# The npm lockfile IS committed: `npm ci` in the publish job needs it, and without one that job
+# resolved 527 packages afresh every time - including the five that run install scripts - and then
+# built `dist/` from whatever it got. `pnpm-lock.yaml` stays ignored so two lockfiles cannot
+# disagree; this project uses npm.
 /pnpm-lock.yaml
 /dist
 /_docs

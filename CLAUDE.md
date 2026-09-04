@@ -56,7 +56,7 @@ on GitHub is a technical requirement**, not a habit.
 |---|---|
 | gates that run | `prepublishOnly` = `npm run build && npm run lint`, during `npm publish` |
 | gates that do **not** run | tests, the drift check, `@n8n/scan-community-package` |
-| **no `package-lock.json` in the repository** | it is `.gitignore`d (line 3) — a deliberate act, not an oversight. CI runs `npm install`, not `npm ci` |
+| **`package-lock.json` IS committed** | CI runs `npm ci`. It used to be `.gitignore`d, which an earlier analysis called "a deliberate act, not an oversight" — the history does not support that: the line arrived in a large feature commit alongside `pnpm-lock.yaml`, with no rationale, and reads as a generic ignore rather than a decision about reproducibility |
 | `npm install -g npm@latest` | npm itself is unpinned in the publish job |
 
 `files: ["dist"]`, so the published artefact is built *in that job* from dependencies resolved that
