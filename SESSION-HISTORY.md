@@ -12,6 +12,27 @@
 
 ## Session 0001 — Repair the node, then give it datasets (2026-09-03 → 2026-09-04)
 
+> **Addendum, 2026-09-04 (morning).** Added after the owner reviewed the run, per the rule that a
+> past entry is corrected by adding to it. Three follow-ups, all in PR #3:
+>
+> - **`CLAUDE.md` was carrying three kinds of thing at once** — durable rules, status that goes
+>   stale, and unowned open items. Measurements in prose were replaced by the commands that produce
+>   them (its `IDataObject` count had drifted to less than half the real number), the `pairedItem`
+>   section now separates the lesson from the closed status, and the facts a checker can never find
+>   got their own section.
+> - **`TODO.md` and `SESSION-HISTORY.md` introduced**, tracked, following the oneglue convention,
+>   with `node-docs` owning them every run. Owner's framing, and it is the right one: `CLAUDE.md`
+>   holds what is always true; state and history belong elsewhere.
+> - 🔴 **An audit found the run's lessons had NOT reached the individual agent definitions.** They
+>   were in `CLAUDE.md`, the PR bodies and the phase reports — but each agent reads its own file, so
+>   the next run would have paid for them again. The `executeAll`-invisible-to-both-checkers lesson,
+>   the whole headless-trace recipe, the two mutations that defeated a checker, the
+>   conditional-ruling practice and the reason the credential safety is accidental are now in
+>   `node-implementer`, `node-trace`, `node-validator`, `node-architect` and `node-security`
+>   respectively. **Lesson about the lesson: writing a finding into the substrate is a separate act
+>   from discovering it, and it does not happen by itself.**
+
+
 **Package version:** `0.1.9` (unchanged — nothing was released).
 **Branches:** `fix/api-drift-and-paired-item` (PR #2 → `main`), `feat/onedata-datasets`
 (PR #3 → #2). Both draft.
