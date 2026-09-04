@@ -7,6 +7,11 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Creating a release starts this job, but it now WAITS for a human. The `npm-publish`
+    # environment requires a review from Mirko Tochtermann or Oliver Rasch before any step runs.
+    # Publishing authenticates by OIDC trusted publishing, so there is no token to revoke - the
+    # only control over what reaches npmjs.org is who may approve this deployment.
+    environment: npm-publish
     permissions:
       contents: read
       id-token: write
@@ -16,6 +21,5 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
-      - run: npm install -g npm@latest
       - run: npm install
       - run: npm publish --access public --provenance
