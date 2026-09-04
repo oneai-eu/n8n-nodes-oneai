@@ -104,7 +104,7 @@ export async function execute(
 
 	const file = await oneAiApiRequestRaw.call(this, {
 		method: 'GET',
-		endpoint: `/api/spaces/${spaceId}/files/download`,
+		endpoint: `/api/spaces/${encodeURIComponent(spaceId)}/files/download`,
 		qs,
 	});
 

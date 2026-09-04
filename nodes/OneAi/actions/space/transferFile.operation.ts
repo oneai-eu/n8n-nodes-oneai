@@ -111,7 +111,7 @@ export async function execute(
 
 	const response = await oneAiApiRequest.call(this, {
 		method: 'POST',
-		endpoint: `/api/spaces/${spaceId}/files/transfer`,
+		endpoint: `/api/spaces/${encodeURIComponent(spaceId)}/files/transfer`,
 		body: {
 			sourcePath,
 			targetSpaceId,

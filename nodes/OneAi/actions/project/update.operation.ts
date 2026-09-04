@@ -106,7 +106,7 @@ export async function execute(
 
 	const response = await oneAiApiRequest.call(this, {
 		method: 'PUT',
-		endpoint: `/api/projects/${projectId}`,
+		endpoint: `/api/projects/${encodeURIComponent(projectId)}`,
 		body,
 	});
 

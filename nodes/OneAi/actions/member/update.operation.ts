@@ -41,7 +41,7 @@ export async function execute(
 
 	const response = await oneAiApiRequest.call(this, {
 		method: 'PUT',
-		endpoint: `/api/members/${userId}`,
+		endpoint: `/api/members/${encodeURIComponent(userId)}`,
 		body: {
 			isAdmin,
 		},

@@ -10,6 +10,195 @@
 
 ---
 
+## Session 0002 — The last additions before a release, and the documentation that had to catch up (2026-09-04)
+
+**Package version:** `0.2.0` — set by the owner during the run; npm `latest` is still `0.1.9`.
+**Branches:** `feat/onedata-datasets` (PR #3 → PR #2 → `main`). Both still draft; nothing released.
+**Agents involved:** `node-implementer` (two passes), `node-validator`, `node-security`, `node-docs`.
+**Task:** the owner's own words, from the run's master prompt — *"Owner GO: autonomous, narrow, and
+the last additions before a release. Four operations into the existing dataset pull request (#3). Do
+not merge, do not release, do not touch `package.json`."* The documentation pass that closes the run
+was scoped separately: *"Bring the documentation to the exact shipping state for release `0.2.0`.
+This is the last documentation pass before publication to npm, so a claim that is not true is a
+defect."*
+
+### What the release contains
+
+`0.1.9` shipped 49 operations across 8 resources. `0.2.0` ships **62 across 10**, measured by
+`scripts/drift-check.mjs`, which parses the router rather than the directory and is the only count
+worth quoting. The additions are `dataset` and `datasetRow` in full (Session 0001), then five
+operations added in this run's two implementer passes:
+
+- **`dataset:listSpaces`** — pinned to `provider=oneData`, and the pin *is* the operation. Every
+  other dataset operation needs a space ID the author had no way to obtain from inside the node;
+  `space:list` could be filtered to `oneData` only by someone who already knew that a dataset lives
+  in a space of that provider, which is a platform concept a node exists to hide. Each item carries
+  a top-level `spaceId`, which is exactly what `dataset:list` takes, so `List Spaces → List →
+  Append` composes with no glue node — n8n's own item loop is the fan-out.
+- **`project:archive` / `project:unarchive`** — the honest restoration of what removing
+  `project:delete` cost, since `DELETE /api/projects/{id}` is simply absent from the spec. Two
+  operations rather than one with an Action dropdown, because the node creator builds one panel
+  entry per operation from its `action` string, and an author looking for "archive" wants to find
+  two verbs, not one.
+- **`project:instantiateTemplate`** — the replacement for `project:create`, and deliberately not a
+  rename of it: it takes a template ID, not a name and a description, and there is no endpoint that
+  creates an empty project.
+- **`artifact:exportPptx`** — a mirror of the repaired `exportPdf`; the endpoint was found during
+  that repair and left unexposed.
+
+### The decision that carries an argument: a refusal is not a success
+
+🔴 `POST /api/projects/bulk` **authorises each project separately and reports refusals with HTTP
+200**, in a `failed[]` array. The obvious implementation — return the response and let the workflow
+be green — would present a refusal as an accomplished archive.
+
+The node therefore never reads success from the status code. It emits
+`{ projectId, action, success, error }` and sets `success: false` with oneAI's own message whenever
+the project is not in `succeeded` — including the case where the API names it in neither list, which
+is treated as failure because an unmentioned id is not evidence of anything. The validator drove
+that reducer through six responses, two of them malformed (`{}` and `succeeded: 'P1'` as a bare
+string): correct on all six.
+
+The counter-argument was considered and rejected: throwing a `NodeApiError` on a refusal would abort
+the whole execution and discard the API's explanation, for what is a routine partial result on a
+bulk endpoint. The cost of the choice is real and is now in the README — **the execution is green
+either way, so a workflow that acts on the outcome must branch on `$json.success`.**
+
+### The spelling, settled
+
+**`oneAI` and `oneData`**, never `OneAI` or `OneData`, in every string, description and comment;
+the identifiers stay `OneAi` / `oneAi` because they are n8n's node name and TypeScript symbols.
+Normalised across the node, the credential, the codex file and the documents. It is a small thing
+that is expensive to fix later, because the strings that carry it are the ones users read.
+
+### The release was blocked on documentation, and the blocker was worse than a stale number
+
+The validator's verdict was *"SHIP the code, BLOCK the release"* on three non-code items. The one
+that was ours: the README said **57 operations across 10 resources** while the node shipped **62**,
+omitted all five operations above — and, under *What this node does not do*, told the reader:
+
+> **No project creation or deletion.** … so neither is guessed at.
+
+Both are now implemented, and a second line pointed the reader at that paragraph. So the shipped
+README — which is also the npmjs.org landing page — actively denied a feature of the release it
+would have been published with. The commit that added the five operations did not touch the README,
+and **nothing in the gate set reads it**.
+
+Fixed by regenerating the tables from `modes.ts` and asserting the result mechanically rather than
+by eye: a script that parses both files and requires the same resources in the same order, the same
+per-resource counts, and the same operation names *and descriptions*, verbatim. Falsified with four
+mutations — a wrong headline count, a deleted table row, an altered description, and `OneData` for
+`oneData` — each of which reddened it. (A fifth attempt reported clean and was **my own broken
+mutation**, not a hole: the shell had mangled the string before it reached the file. Re-applied
+properly, it failed as it should. The house rule about measuring what you think you are measuring
+applies to the mutation as much as to the check.) The script itself is not committed; that it should
+be is **BL-15**.
+
+Two documentation defects fell out of the same pass and are fixed rather than filed:
+
+- **BF-3, closed.** `modes.ts` described `artifact:create` as *"Create an artifact from a file"*. The
+  operation takes a space, a name and an optional source chat and message; there is no file anywhere
+  in it. Display text only, so safe on `typeVersion: 1` — and it is the text the dropdown shows, so
+  leaving it would have shipped a false claim in the UI and forced the README to either repeat it or
+  disagree with the file it is generated from.
+- **The Installation section claimed the node is offered "in the node panel of every n8n
+  instance."** True only where community nodes are enabled; now says so.
+
+The README also gained what the security audit established and only a user can act on: `Space >
+Create`'s **Provider Options (JSON)** cannot carry `password: true` — n8n honours that flag on
+`string` parameters only — so a provider key pasted there is visible on screen, in an export and in
+every execution snapshot; and the same operation's `webhookUrl` response embeds a routing token
+oneAI's own wizard shows once, which then lives in the execution log forever. Saying it in the field
+descriptions as well is **BL-16**.
+
+### Discoverability, and what it cost
+
+Carried into this release from Session 0001, because it is the reason the node is usable at all:
+`resource` and `operation` are **static options generated from `modes.ts`**, each operation carrying
+an `action`. `0.1.9` moved both to `loadOptions`, which yields zero actions to n8n's action-first
+node creator and made the node invisible to panel search; `"AI"` on the *main* node's codex
+categories then routed it out of search entirely. Both are fixed and both are guarded by
+`scripts/panel-check.mjs`.
+
+🔴 **The price is paid every release and should not be quietly forgotten:** a static list cannot be
+filtered by the credential, so a Gateway-only credential now shows hub operations in the dropdown
+and `isOperationAllowed` refuses them at runtime with a message naming the reason. Credential-aware
+filtering was the entire purpose of the `loadOptions` change. The bench measured 62 operation
+options carrying an action, and `loadOptionsMethod` count **0** in the deployed JavaScript.
+
+### Two checker holes, found by the validator and closed
+
+Both are of the house type — a rule that only looks where it expects the defect:
+
+1. 🔴 **`paired-item-check.mjs` did not recurse.** It read one directory level, so moving the
+   shadowing defect from `dataset/helpers.ts` into `dataset/util/lineage.ts` — one level deeper —
+   produced an unchanged site count of 104 and `RESULT: clean, exit 0` on genuinely wrong lineage.
+   This is the *second* time the same checker was defeated by relocation; the first was closed by
+   widening the glob, which fixed the instance and not the class. It now walks every `.ts` under
+   `actions/` at any depth.
+2. **Nothing asserted `incremental: false`.** The setting is the only thing standing between the
+   publish path and a build that prints "Build successful" and emits **no JavaScript**, which
+   `prepublishOnly` (`build && lint`) passes. The validator put the old setting back and measured
+   exactly that: build 1 → 118 `.js`, build 2 → 0 `.js`, exit 0, lint 0. `panel-check.mjs` R4 now
+   asserts it, on the argument that a node nobody can find and a node that is not there are the same
+   failure to a user.
+
+Still open from the same review: `panel-check.mjs` has **no operation-count floor tied to the
+router**, so deleting an `action` key outright drops the count 62 → 61 and reports clean — `tsc`
+catches it only because the type requires the field, which is coverage by accident (**BL-11**).
+
+### What the audits established
+
+**Validator**, over 12 mutations: 10 reddened as expected, 2 gaps (above), 1 false positive that
+fails closed. Beyond the checkers, it drove all 62 operations through the **built** router with a
+stubbed transport: 62 dispatch, 62 issue at least one request, and 66 (operation, call) pairs match
+the committed spec by path template and method with 0 unmatched — an independent confirmation of
+drift tier 1 from URLs the code actually produced rather than from parsed source. Lineage was proven
+dynamically as well as structurally: two input items in, `{"item":0}` and `{"item":1}` out, and
+`appendMany` emitting the array form for its many-to-one row. A fresh clone on **Node 22**, which is
+what CI pins, produced a `dist/` byte-for-byte identical to the local build.
+
+**Security**, as a client and not a platform: the credential is clean on every axis — six call
+sites, all `httpRequestWithAuthentication`, the key never read, no custom-API-call escape hatch —
+and an AxiosError carrying `Authorization` in `config.headers` was constructed and walked to depth 8
+without the secret becoming reachable. Its one finding worth acting on inside the node was **F2**,
+now closed as **BL-8**: 39 interpolated path segments went into request paths raw. Resolved
+concretely rather than by category, `#` truncates a template's suffix and `..` climbs to any prefix,
+which compose into full path control for the operation's fixed method — bounded by the credential's
+own authority and unable to change host, but a confused deputy in a node that is `usableAsTool`, and
+the model filling an ID field is the realistic path. All 72 interpolations in `/api` templates now
+encode. The remaining findings are the owner's (**OWNER-5**, the 527-package install with five
+install scripts running before the artefact is built) or n8n's model rather than ours (**BL-16**).
+
+### The bench, measured rather than assumed
+
+`https://n8n.oneai.de` runs the pre-release build. n8n's `installed_packages` row reads
+**`0.1.9-pr3`**, which is what the Community nodes page shows — the marker did survive. 🔴 But the
+package's **`package.json` on disk reads `0.1.9`**, so anyone inspecting the container instead of the
+UI concludes the npm release is installed. Recorded as **BL-17**.
+
+A second thing worth having found: the rollback line this file carried was a **no-op**. Because the
+installed tree already claims `0.1.9`, `npm install @oneai-eu/n8n-nodes-oneai@0.1.9` is satisfied by
+what is there and does nothing. `TODO.md` now gives the reinstall-from-clean form and prefers the
+Community nodes page, which rewrites the database row at the same time.
+
+Deployed build verified by hashing `dist/nodes/OneAi/modes.js` against a local build of `d636473`:
+identical but for one reworded resource description. This session's documentation changes are not on
+the bench; none of them alters behaviour.
+
+### Not reached
+
+- **The nodes panel in a browser, for this build.** `panel-check.mjs` reads source. The owner typed
+  the name into the panel on 2026-09-04 against a build one display string behind; nobody has done
+  it since.
+- **Any live oneAI request in this run.** Every operation was driven against a stubbed transport, so
+  the five new operations are verified against the committed spec and **not** against the instance.
+  `project:archive`'s refusal path in particular has never been observed against a real 200.
+- **`@n8n/scan-community-package` on this code.** Structurally impossible before publication: it
+  downloads by package name from npm. What it certified is `0.1.9` at commit `aef3e2e`.
+- **BL-2 and BL-9** are unchanged — six dataset operations untraced through n8n, and Gateway-plan
+  behaviour still unproven because the `oai-gk_` key was minted against a `team`-plan org.
+
 ## Session 0001 — Repair the node, then give it datasets (2026-09-03 → 2026-09-04)
 
 > **Addendum, 2026-09-04 (morning).** Added after the owner reviewed the run, per the rule that a

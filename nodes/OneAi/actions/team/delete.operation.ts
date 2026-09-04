@@ -26,7 +26,7 @@ export async function execute(
 
 	await oneAiApiRequest.call(this, {
 		method: 'DELETE',
-		endpoint: `/api/teams/${teamId}`,
+		endpoint: `/api/teams/${encodeURIComponent(teamId)}`,
 	});
 
 	return this.helpers.returnJsonArray({ success: true }).map((item) => ({

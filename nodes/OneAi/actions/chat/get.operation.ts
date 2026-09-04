@@ -95,7 +95,7 @@ export async function execute(
 
 	const response = await oneAiApiRequest.call(this, {
 		method: 'GET',
-		endpoint: `/api/chats/${chatId}`,
+		endpoint: `/api/chats/${encodeURIComponent(chatId)}`,
 		qs,
 	});
 

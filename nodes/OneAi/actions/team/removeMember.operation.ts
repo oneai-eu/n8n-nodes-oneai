@@ -41,7 +41,7 @@ export async function execute(
 
 	await oneAiApiRequest.call(this, {
 		method: 'POST',
-		endpoint: `/api/teams/${teamId}/members/remove`,
+		endpoint: `/api/teams/${encodeURIComponent(teamId)}/members/remove`,
 		body: { userId },
 	});
 

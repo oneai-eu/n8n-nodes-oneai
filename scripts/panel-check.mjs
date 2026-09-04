@@ -98,13 +98,32 @@ for (const param of ['resource', 'operation']) {
 // R2 - every operation must carry an `action` string
 // ---------------------------------------------------------------------------
 
-const opEntries = [...modesSrc.matchAll(/\bvalue:\s*'([^']+)'[^}]*?\baction:\s*'([^']*)'/g)];
-const opValues = [...modesSrc.matchAll(/\{\s*name:\s*'[^']+',\s*value:\s*'([^']+)'/g)];
+// Scoped to the OPERATIONS block: a name/value pair also describes a RESOURCE, and counting
+// those too made this comparison read 72 against 62 on a clean tree - a false positive, which is
+// the one kind of finding a checker may never produce.
+const operationsBlock = (modesSrc.match(/OPERATIONS[^=]*=\s*\{([\s\S]*?)\n\};/) ?? [, ''])[1];
+const opValues = [...operationsBlock.matchAll(/\{\s*name:\s*'[^']+',\s*value:\s*'([^']+)'/g)];
+const opEntries = [...operationsBlock.matchAll(/\bvalue:\s*'([^']+)'[^}]*?\baction:\s*'([^']*)'/g)];
 const withoutAction = opEntries.filter(([, , action]) => action.trim() === '');
 if (withoutAction.length > 0) {
 	findings.push({
 		rule: 'R2',
 		message: `${withoutAction.length} operation(s) carry an empty \`action\`; the panel builds its entries from that string`,
+	});
+}
+
+/**
+ * 🔴 An operation whose `action` key is REMOVED rather than emptied does not match the pattern
+ * above at all - it simply stops being counted, and the report stays clean on a smaller number.
+ * Counting operations a second way and comparing is what turns a silently shrinking count into a
+ * finding. Found by a validator, who removed a key and watched 62 become 61 with exit 0.
+ */
+if (opValues.length !== opEntries.length) {
+	findings.push({
+		rule: 'R2',
+		message:
+			`${opValues.length} operation(s) are declared but only ${opEntries.length} carry an \`action\` key at all. ` +
+			'An operation without that key is missing from the nodes panel and from this check\'s own count.',
 	});
 }
 
@@ -134,6 +153,41 @@ if (codex) {
 				'Agent looks for it. Measured live: removing "AI" is what made the node findable again.',
 		});
 	}
+}
+
+// ---------------------------------------------------------------------------
+// R4 - the build must be capable of producing an artefact at all
+// ---------------------------------------------------------------------------
+
+/**
+ * 🔴 A node nobody can find and a node that is not there are the same failure to a user, so this
+ * check owns both.
+ *
+ * `n8n-node build` deletes `dist/` and then runs `tsc`. With `incremental: true` a surviving
+ * `.tsbuildinfo` convinces `tsc` that everything is already emitted, so the build prints
+ * "Build successful" and produces **no JavaScript at all** - and `prepublishOnly`
+ * (`build && lint`), the only gate on the publish path, passes on that empty artefact. Reproduced
+ * twice: once when it was introduced, once by a validator who put the old setting back and got a
+ * clean exit 0 with zero `.js` files.
+ *
+ * Nothing else in the gate set asserts this, which is why it is asserted here.
+ */
+const tsconfigRaw = read(join(ROOT, 'tsconfig.json'));
+// tsconfig.json permits comments, so strip line comments before parsing.
+try {
+	const tsconfig = JSON.parse(tsconfigRaw.replace(/^\s*\/\/.*$/gm, ''));
+	const incremental = tsconfig?.compilerOptions?.incremental;
+	if (incremental === true) {
+		findings.push({
+			rule: 'R4',
+			message:
+				'`tsconfig.json` sets `incremental: true`. A surviving `.tsbuildinfo` then makes ' +
+				'`n8n-node build` report success while emitting no JavaScript, and `prepublishOnly` ' +
+				'publishes that empty artefact. It must stay off.',
+		});
+	}
+} catch (error) {
+	problems.push(`tsconfig.json could not be parsed: ${error.message}`);
 }
 
 // ---------------------------------------------------------------------------

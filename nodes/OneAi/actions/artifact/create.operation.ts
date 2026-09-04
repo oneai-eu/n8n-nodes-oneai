@@ -91,7 +91,7 @@ export async function execute(
 
 	const response = await oneAiApiRequest.call(this, {
 		method: 'POST',
-		endpoint: `/api/spaces/${spaceId}/artifacts`,
+		endpoint: `/api/spaces/${encodeURIComponent(spaceId)}/artifacts`,
 		body,
 	});
 

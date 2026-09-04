@@ -88,7 +88,7 @@ export const OPERATIONS: Record<string, OperationDefinition[]> = {
 		},
 	],
 	artifact: [
-		{ name: 'Create', value: 'create', description: 'Create an artifact from a file', action: 'Create an artifact', gateway: false },
+		{ name: 'Create', value: 'create', description: 'Create an artifact in a space, optionally from a chat message', action: 'Create an artifact', gateway: false },
 		{ name: 'Delete', value: 'delete', description: 'Delete an artifact from a space', action: 'Delete an artifact', gateway: false },
 		{ name: 'Export PDF', value: 'exportPdf', description: 'Export an artifact as a PDF', action: 'Export artifact as PDF', gateway: false },
 		{ name: 'Export PPTX', value: 'exportPptx', description: 'Export a presentation artifact as a PPTX file', action: 'Export artifact as PPTX', gateway: false },

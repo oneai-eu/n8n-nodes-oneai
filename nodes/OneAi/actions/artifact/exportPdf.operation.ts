@@ -67,7 +67,7 @@ export async function execute(
 
 	const pdf = await oneAiApiRequestRaw.call(this, {
 		method: 'GET',
-		endpoint: `/api/spaces/${spaceId}/artifacts/${artifactId}/pdf`,
+		endpoint: `/api/spaces/${encodeURIComponent(spaceId)}/artifacts/${encodeURIComponent(artifactId)}/pdf`,
 	});
 
 	const binaryData = await this.helpers.prepareBinaryData(

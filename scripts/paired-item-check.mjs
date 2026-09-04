@@ -655,16 +655,30 @@ function mapReceiver(src, arrowScope) {
 // The rules
 // ---------------------------------------------------------------------------
 
-function listOperationFiles() {
-	const files = [];
-	for (const entry of readdirSync(ACTIONS_DIR, { withFileTypes: true })) {
-		if (!entry.isDirectory()) continue;
-		const dir = join(ACTIONS_DIR, entry.name);
-		for (const f of readdirSync(dir)) {
-			if (f.endsWith('.operation.ts')) files.push(join(dir, f));
-		}
+/**
+ * Every `.ts` under `actions/`, at ANY depth.
+ *
+ * 🔴 This recurses because a flat listing was defeated twice. First by moving the shadowing
+ * defect into a `helpers.ts` (closed by widening the glob from `*.operation.ts` to `*.ts`), then
+ * by moving it one level deeper into `actions/<resource>/util/lineage.ts` - which a single
+ * `readdirSync` per resource directory never opens. The site count stayed at 104 and the report
+ * said `clean, exit 0` on genuinely wrong lineage. A rule that only looks where it expects the
+ * defect is not a rule.
+ */
+function collectTsFiles(dir) {
+	const found = [];
+	for (const entry of readdirSync(dir, { withFileTypes: true })) {
+		const full = join(dir, entry.name);
+		if (entry.isDirectory()) found.push(...collectTsFiles(full));
+		else if (entry.name.endsWith('.ts')) found.push(full);
 	}
-	return files.sort();
+	return found;
+}
+
+function listOperationFiles() {
+	return collectTsFiles(ACTIONS_DIR)
+		.filter((f) => f.endsWith('.operation.ts'))
+		.sort();
 }
 
 /**
@@ -678,15 +692,12 @@ function listOperationFiles() {
  * Stage 2 is the change that introduced helper files, so the hole opened in the same run.
  */
 function listHelperFiles() {
-	const files = [];
-	for (const entry of readdirSync(ACTIONS_DIR, { withFileTypes: true })) {
-		if (!entry.isDirectory()) continue;
-		const dir = join(ACTIONS_DIR, entry.name);
-		for (const f of readdirSync(dir)) {
-			if (f.endsWith('.ts') && !f.endsWith('.operation.ts')) files.push(join(dir, f));
-		}
-	}
-	return files.sort();
+	return collectTsFiles(ACTIONS_DIR)
+		.filter((f) => !f.endsWith('.operation.ts'))
+		// `router.ts` lives here too and has its own rule (R4), which knows about the input-item
+		// loop variable. Checking it as a helper as well reports its correct lineage as a fault.
+		.filter((f) => f !== ROUTER_FILE)
+		.sort();
 }
 
 /**

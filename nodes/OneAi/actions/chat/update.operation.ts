@@ -99,7 +99,7 @@ export async function execute(
 
 	const response = await oneAiApiRequest.call(this, {
 		method: 'PUT',
-		endpoint: `/api/chats/${chatId}`,
+		endpoint: `/api/chats/${encodeURIComponent(chatId)}`,
 		body,
 	});
 

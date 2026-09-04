@@ -244,6 +244,7 @@ credentials/OneAiApi.credentials.ts
 openapi/openapi.json     the committed spec snapshot; PROVENANCE.md names its oneAI commit
 scripts/drift-check.mjs        spec ↔ node surface, on shapes
 scripts/paired-item-check.mjs  every emitted row names the input item it came from
+scripts/panel-check.mjs        the node is findable in the panel, and the build can emit at all
 docs/                    research, findings, orchestration — never shipped
 ```
 
@@ -272,14 +273,16 @@ node scripts/paired-item-check.mjs  # lineage: every row names the input item it
 node scripts/panel-check.mjs        # can a workflow author FIND the node in the panel?
 ```
 
-Both checkers exit **1** on a real finding and **2** when their own extractor is broken. A 2 means
-every number they printed is fiction — it is never a finding.
+All three `scripts/*.mjs` checks exit **1** on a real finding and **2** when their own extractor is
+broken. A 2 means every number they printed is fiction — it is never a finding.
 
 🔴 **`incremental` is off in `tsconfig.json`, and must stay off.** `n8n-node build` deletes `dist/`
 and then runs `tsc`; a surviving `.tsbuildinfo` convinces `tsc` everything is already emitted, so the
 build prints **"Build successful" and produces no JavaScript at all**. `prepublishOnly` is
-`build && lint` and is the only gate on the publish path, so it passes on that empty artefact. After
-any change to build configuration, check that the build actually emitted something:
+`build && lint` and is the only gate on the publish path, so it passes on that empty artefact.
+`panel-check.mjs` R4 asserts the setting is off, but the assertion reads `tsconfig.json` and cannot
+see an empty `dist/`, so after any change to build configuration also check that the build actually
+emitted something:
 
 ```bash
 rm -rf dist && npm run build && find dist -name '*.js' | wc -l   # must be non-zero

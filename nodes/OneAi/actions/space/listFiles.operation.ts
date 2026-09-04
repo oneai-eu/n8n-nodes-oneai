@@ -120,7 +120,7 @@ export async function execute(
 	if (returnAll) {
 		const files = await oneAiApiRequestAllItems.call(this, {
 			method: 'GET',
-			endpoint: `/api/spaces/${spaceId}/files`,
+			endpoint: `/api/spaces/${encodeURIComponent(spaceId)}/files`,
 			qs,
 			itemsKey: 'files',
 		});
@@ -136,7 +136,7 @@ export async function execute(
 
 	const response = await oneAiApiRequest.call(this, {
 		method: 'GET',
-		endpoint: `/api/spaces/${spaceId}/files`,
+		endpoint: `/api/spaces/${encodeURIComponent(spaceId)}/files`,
 		qs,
 	});
 

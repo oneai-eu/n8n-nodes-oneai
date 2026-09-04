@@ -86,7 +86,7 @@ export async function execute(
 
 	const response = await oneAiApiRequestBinary.call(this, {
 		method: 'PUT',
-		endpoint: `/api/spaces/${spaceId}/files/upload`,
+		endpoint: `/api/spaces/${encodeURIComponent(spaceId)}/files/upload`,
 		body: binaryData,
 		qs: {
 			path,
@@ -104,7 +104,7 @@ export async function execute(
 	if (autoEmbed) {
 		const embedResponse = await oneAiApiRequest.call(this, {
 			method: 'POST',
-			endpoint: `/api/spaces/${spaceId}/files/embed`,
+			endpoint: `/api/spaces/${encodeURIComponent(spaceId)}/files/embed`,
 			body: {
 				paths: [path],
 			},
