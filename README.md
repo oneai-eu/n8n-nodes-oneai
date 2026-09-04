@@ -28,7 +28,7 @@ Turning **Gateway Only** on hides the hub-only resources. A workflow built again
 
 ## Supported Resources & Operations
 
-**62 operations across 10 resources.** The tables below are derived from `nodes/OneAi/modes.ts`, the same file the node's **Resource** and **Operation** dropdowns are built from, and they follow the order the dropdown shows. Names and descriptions are the ones the dropdown shows, verbatim. Operations that exist as source files but are not dispatched are not listed here, because they ship to nobody.
+**75 operations across 11 resources.** The tables below are derived from `nodes/OneAi/modes.ts`, the same file the node's **Resource** and **Operation** dropdowns are built from, and they follow the order the dropdown shows. Names and descriptions are the ones the dropdown shows, verbatim. Operations that exist as source files but are not dispatched are not listed here, because they ship to nobody.
 
 ### AI (8 operations)
 
@@ -69,19 +69,56 @@ Hub artifacts — markdown, PDFs, presentations, distilled documents — inside 
 
 **Export PDF** and **Export PPTX** are siblings: both fetch the rendered file from oneAI and write the bytes into a binary property, so the result can go straight into an email, a file-storage node or a Convert node. PPTX only produces a file for an artifact oneAI can render as a presentation.
 
-### Chat (5 operations)
+### Audit Log (4 operations)
 
-Create and manage AI chat conversations in the hub.
+The compliance record oneAI keeps for EU AI Act purposes: which pattern matched a request, what the compliance layer did about it, and — where it held the request — an admin's verdict on it.
 
-| Operation | Description                                                       |
-| --------- | ----------------------------------------------------------------- |
-| Create    | Create a new chat                                                 |
-| Delete    | Delete a chat                                                     |
-| Get       | Get chat history                                                  |
-| List      | List chats with optional filtering                                |
-| Update    | Update chat details (rename, switch branch, or set persona/agent) |
+| Operation | Description                                                                                                                                        |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Export    | Export audit logs as a ZIP archive holding one CSV or JSON file. The columns are chosen per export, and all of them are included by default.        |
+| Get       | Get an audit log by ID                                                                                                                             |
+| List      | List audit logs with optional filtering                                                                                                            |
+| Review    | Record an admin verdict on a log the compliance layer flagged, blocking or unblocking the request it held                                           |
+
+**List** filters on **Origin** (nine values), **Risk Level**, **Since** and **User ID**. Two things about it were measured against a live instance rather than read from the spec:
+
+- **`Since` is exclusive.** A log whose `createdAt` is exactly the value passed is *not* returned. That is the behaviour a scheduled poll wants: store the newest `createdAt` you saw, pass it back on the next tick, and nothing is read twice or skipped.
+- 🔴 **The API caps a page at 30 rows and clamps silently** — it does not reject a larger request, it just returns 30. The node therefore keeps reading pages until **Limit** is satisfied. Releases up to and including `0.2.0` sent the limit straight through, so a workflow asking for 50 received 30 and was told nothing.
+
+**Review** submits `block` or `unblock` on a log the compliance layer held, with an optional review note. It is an approval, it is admin-only on the oneAI side, and its outcome defaults to `block` — a half-configured node declines a held request rather than approving it. See [What an AI agent can do with this node](#what-an-ai-agent-can-do-with-this-node) before you connect this node to an AI Agent.
+
+**Export** writes the archive into a binary property, so n8n's own **Compression** and **Extract from File** nodes open it without a second tool. All ten columns are on by default, because an audit export is opened to answer who did what; three of them — **User ID**, **Matched Text** and **Reasoning** — carry personal data or reproduce the content that triggered a pattern, and deselecting them is one click.
+
+🔴 **`Export` does not currently work against oneAI.** On the oneAI build tested on 2026-09-04, `POST /api/audit/logs/export` answers **HTTP 500** for every request shape — a database defect on the oneAI side (`column reference "org_id" is ambiguous`) that affects every caller, not only this node. The operation is implemented against the published API contract and its archive was proven to open in the Compression node against a local stub, but it has never returned a real archive. It is reported to the oneAI API owners.
+
+### Chat (10 operations)
+
+Create and manage AI chat conversations in the hub, and get the files and images a chat produced back out of it.
+
+| Operation           | Description                                                                                                                                                                    |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Create              | Create a new chat                                                                                                                                                              |
+| Delete              | Delete a chat                                                                                                                                                                  |
+| Export              | Export a chat as a Markdown document                                                                                                                                           |
+| Get                 | Get chat history                                                                                                                                                               |
+| Get Blob            | Download an image or file that a chat produced, as binary data. Get returns the blob IDs, on the parts of its assistant messages.                                               |
+| Get Blob URL        | Generate a pre-authenticated URL for a chat blob. The link is signed and time-limited, needs no oneAI credential, and is stored in the execution data.                          |
+| List                | List chats with optional filtering                                                                                                                                             |
+| Rate Message        | Rate an assistant message thumbs up or down. Removing a rating is not part of this node, although the API supports it.                                                          |
+| Save Blob to Space  | Save a chat blob into a space as a file, without moving the bytes through n8n                                                                                                  |
+| Update              | Update chat details (rename, switch branch, or set persona/agent)                                                                                                              |
 
 🔴 **A chat lives in a space, and only in a space whose provider is `Project`.** Passing any other space ID — an oneAI Storage space, a oneData space — is rejected with `Chats can only be created in projects.` **List** filters by space ID for the same reason.
+
+**Where a blob ID comes from.** `Chat > Get` returns the whole chat as **one item**, with the blob parts on its assistant messages, so reaching a blob ID takes a Split Out node (or a `flatMap` expression) between `Get` and the blob operations. `Chat > List` is not a discovery path: its `blobId` sits under `lastUserMessage.parts`. The chat that produced an image is the one `AI > Create Response` returns a `chatId` for.
+
+The three blob operations differ in where the bytes end up, not in what they fetch:
+
+- **Get Blob** brings the bytes into n8n as binary data. Pass the blob's **MIME Type** from `Get`; the default is `application/octet-stream`, which is honest about unknown bytes but gives n8n no preview and no file extension.
+- **Get Blob URL** returns a signed link instead. Measured live: the signature is enforced, the link expires **one hour** after it is minted, and it needs no oneAI credential at all — so anyone who can read the execution can fetch the blob until it expires. The API answers with a *relative* path; the node emits it verbatim as `url` and adds `absoluteUrl`, resolved against the credential's base URL, which is the one a Slack message or an HTTP Request node can use.
+- **Save Blob to Space** keeps the bytes inside oneAI: they move server-side, so a large file never passes through n8n at all, and the next embedding run picks it up.
+
+**Export** produces the chat as Markdown. Its **Include Redacted Values** switch is off by default and the flag is sent only when it is on; turning it on returns the original values oneAI's compliance redaction removed, into the workflow output and therefore into the execution record.
 
 ### Compliance Pattern (5 operations)
 
@@ -159,29 +196,39 @@ Browse hub spaces and files as references to attach to conversations and artifac
 | List Files  | List files accessible for attaching as references  |
 | List Spaces | List spaces accessible for attaching as references |
 
-### Space (17 operations)
+### Space (21 operations)
 
 Hub spaces and the files in them. A space is backed by a storage provider, and the provider decides what the space can hold.
 
-| Operation     | Description                        |
-| ------------- | ---------------------------------- |
-| Add Team      | Add a team to a space              |
-| Add User      | Add a user to a space              |
-| Create        | Create a new space                 |
-| Delete        | Delete a space                     |
-| Delete File   | Delete a file from a space         |
-| Download File | Download a file from a space       |
-| Embed Files   | Queue files/folders for embedding  |
-| Get           | Get a space by ID                  |
-| List          | List all spaces                    |
-| List Files    | List files in a space              |
-| List Teams    | List teams assigned to a space     |
-| List Users    | List users assigned to a space     |
-| Remove Team   | Remove a team from a space         |
-| Remove User   | Remove a user from a space         |
-| Sync          | Synchronize a linked space         |
-| Transfer File | Move or copy a file between spaces |
-| Upload File   | Upload a file to a space           |
+| Operation           | Description                                                                                                                                                                                                                    |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Add Team            | Add a team to a space                                                                                                                                                                                                          |
+| Add User            | Add a user to a space                                                                                                                                                                                                          |
+| Create              | Create a new space                                                                                                                                                                                                             |
+| Delete              | Delete a space                                                                                                                                                                                                                 |
+| Delete File         | Delete a file from a space                                                                                                                                                                                                     |
+| Download File       | Download a file from a space                                                                                                                                                                                                   |
+| Embed Files         | Queue files/folders for embedding                                                                                                                                                                                              |
+| Get                 | Get a space by ID                                                                                                                                                                                                              |
+| Get Extracted Text  | Get the extracted Markdown text of a file in a space, without downloading its bytes                                                                                                                                            |
+| Get File Stats      | Get embedding progress counts for every file in a space. Embedding is asynchronous, so this is how a workflow learns that Upload File and Embed Files have finished: poll until pending reaches zero.                           |
+| List                | List all spaces                                                                                                                                                                                                                |
+| List Files          | List files in a space                                                                                                                                                                                                          |
+| List Folder         | List the direct children of one folder in a space, files and subfolders                                                                                                                                                        |
+| List Teams          | List teams assigned to a space                                                                                                                                                                                                 |
+| List Users          | List users assigned to a space                                                                                                                                                                                                 |
+| Remove Team         | Remove a team from a space                                                                                                                                                                                                     |
+| Remove User         | Remove a user from a space                                                                                                                                                                                                     |
+| Rename File         | Rename a file in place, keeping its embeddings and its upload metadata                                                                                                                                                         |
+| Sync                | Synchronize a linked space                                                                                                                                                                                                     |
+| Transfer File       | Move or copy a file between spaces. To rename a file inside its own space use Rename File, which keeps the embeddings a transfer does not promise to preserve.                                                                  |
+| Upload File         | Upload a file to a space                                                                                                                                                                                                       |
+
+**Uploading a file is not the same as being able to ask about it.** oneAI extracts and embeds a file asynchronously, and until that finishes the file is invisible to retrieval and `Get Extracted Text` answers **404**. `Get File Stats` is the completion signal — it returns `totalFiles`, `embedded`, `pending`, `error`, `notEmbedded`, `unsupported`, `tooLarge` and `patternExcluded` for the whole space — so the shape that works is **Upload File → Wait → Get File Stats → IF `pending` is 0**, looping back to the Wait, with `error` and `tooLarge` as the failure branch.
+
+🔴 **Rename File and Transfer File are not interchangeable, and the difference is measured, not assumed.** A `Transfer File` into the *same* space with mode `move` — the obvious way to rename a file before this operation existed — set the file's `embeddingStatus` back to `notEmbedded` and made its extracted text 404 again. `Rename File` left both intact. Use `Rename File` inside a space; use `Transfer File` to move or copy between spaces.
+
+**List Folder** lists one folder's direct children — files and subfolders — rather than every path in the space, which is what makes a tree walk with a Loop Over Items node possible. Folder rows carry `hasSubfolders` and `fileCount`, so a walk knows where to descend without fetching the level first, and every row carries the space's `orgPagesExhausted` flag: when it is true the organization is out of its monthly page allowance and files awaiting vision extraction are queued rather than processed.
 
 **Providers** — the twenty values `Create` offers and `List` filters on: oneAI Storage, oneData (Data Tables), Project, ClickUp, Dynamics Sales, Fireflies, Forgejo, GitHub, Google Drive, HTTP API, HubSpot, Lexoffice, MCP, N8N, OneDrive or SharePoint, OneGlue, Outlook, Plytix, SMB Share, Weclapp.
 
@@ -234,9 +281,11 @@ Unknown columns are rejected by oneAI rather than added silently. `Dataset > Upd
 
 ## Binary data
 
-Operations that **write** a file into a binary property: `AI > Generate Image`, `AI > Edit Image`, `AI > Generate Speech`, `Artifact > Export PDF`, `Artifact > Export PPTX`, `Dataset > Export CSV`, `Space > Download File`.
+Operations that **write** a file into a binary property: `AI > Generate Image`, `AI > Edit Image`, `AI > Generate Speech`, `Artifact > Export PDF`, `Artifact > Export PPTX`, `Audit Log > Export`, `Chat > Get Blob`, `Dataset > Export CSV`, `Space > Download File`.
 
 Operations that **read** one: `AI > Edit Image`, `AI > Transcribe Audio`, `Dataset > Import CSV`, `Space > Upload File`.
+
+`Chat > Save Blob to Space` moves bytes **without** a binary property at either end: oneAI copies the blob into the space itself, so a large file never travels through n8n.
 
 `AI > Generate Speech` returns raw PCM — 24 kHz, 16-bit signed little-endian, mono, with no WAV or MP3 header. Downstream nodes that expect a playable file have to wrap or convert it.
 
@@ -246,10 +295,40 @@ Operations that **read** one: `AI > Edit Image`, `AI > Transcribe Audio`, `Datas
 - **oneData datasets** — create typed tables and land rows from any other n8n node in them, one at a time with row IDs or in bulk
 - **Automatic pagination** — list operations transparently handle paginated API responses
 - **Storage integration** — spaces backed by OneDrive/SharePoint, Google Drive, GitHub, SMB, and a range of business applications
-- **File management** — upload, download, transfer and embed files across spaces
+- **File management** — upload, download, rename, transfer and embed files across spaces, with an embedding-progress signal so a workflow knows when a file is ready to be asked about
+- **Compliance** — read the EU AI Act audit trail, export it as a ZIP for a spreadsheet or a warehouse, and record a `block` / `unblock` verdict on a request the compliance layer held
+- **Chat artefacts** — the images and files a chat produced can leave oneAI as binary data, as a signed link, or straight into a space
 - **Item linking** — every output row names the input item it actually came from, so `$('Node Name').item` and the editor's item-linking view resolve correctly
 - **Percent-encoded request paths** — every ID the node interpolates into a request path is percent-encoded, in every operation, so a value arriving from an upstream node cannot steer the request to a different endpoint than the one the operation names
-- **Usable as an AI tool** — the node is exposed to n8n's AI Agent nodes
+- **Usable as an AI tool** — the node is exposed to n8n's AI Agent nodes; read [what that means](#what-an-ai-agent-can-do-with-this-node) before you wire it to one
+
+## What you can build
+
+Three workflows that were not possible before, written as the node's own reason to exist: it is a junction in a graph, not a mirror of an API.
+
+**The file-ingestion loop finally has an ending.** *Google Drive (Download File) → oneAI (`Space > Upload File`) → Wait → oneAI (`Space > Get File Stats`) → IF `pending` is 0 → oneAI (`AI > Create Response`) → Slack.* A workflow could always upload a contract into a space and ask oneAI to embed it, and then it was blind: embedding is asynchronous and nothing said when it had finished, so the workflow either raced the embedder and answered from an index that did not contain the document yet, or hard-coded a sleep long enough to be safe and slow. `Get File Stats` is the completion signal, so the question is asked exactly once, as soon as it can be answered correctly — and `error` and `tooLarge` give the loop a failure branch it never had.
+
+**oneAI's own document extraction, available to the rest of n8n.** *Gmail Trigger (with attachment) → oneAI (`Space > Upload File`) → oneAI (`Space > Get Extracted Text`) → Notion, Google Docs or any AI node.* oneAI already runs extraction and OCR over every file it ingests, and that work used to be locked inside oneAI: an author who wanted the text of a scanned PDF ran a second extraction with a second tool, paid for the same page twice, and got a different answer from the one oneAI's own search works against. `Get Extracted Text` returns the verbatim Markdown oneAI derived, so a scanned invoice that arrives by email becomes structured text with no second OCR vendor anywhere in the workflow.
+
+**The compliance review loop closes outside oneAI's UI.** *Schedule Trigger → oneAI (`Audit Log > List`, filtered by `Since`) → Filter on `summary.reviewRequired` → Slack (send and wait for approval) → oneAI (`Audit Log > Review`).* When oneAI's compliance layer blocked a request and flagged it for review, the verdict could only be given by an admin signing in to oneAI. The blocked request now raises a message in the compliance channel, the reviewer answers in Slack, and the answer goes back as `unblock` or `block` with the reviewer's note. `Audit Log > List` emits one item per log with its `id` and `summary.reviewRequired`, so the Filter needs no Split Out, and `Since` is what stops the channel repeating itself on every tick.
+
+## What an AI agent can do with this node
+
+The node sets `usableAsTool: true`, so an n8n AI Agent can call it directly. n8n exposes a node to agents as a whole or not at all — `usableAsTool` takes no operation filter — so **every operation listed above is reachable by a model in one step**, including the ones that change state and the ones that move sensitive content. Grant it the way you would grant an API key, not the way you would grant a search box.
+
+An operation's **action** string is literally the description the model reads, which is why they are worded as they are. The operations worth knowing about before you wire this node to an agent:
+
+- **`Audit Log > Review`** records an organization admin's `block` or `unblock` decision on a compliance record that oneAI flagged. It is an approval, and a model can cast it. If a human is meant to decide, keep this node out of the agent's toolset and drive `Review` from a separate, non-agent branch of the workflow — the human gate belongs in the workflow, because the node cannot put one there for you.
+- **`Chat > Export` with Include Redacted Values switched on** returns the original values that compliance redaction removed. The switch is off by default and the node sends the flag only when it is on, but an agent that sets parameters can set this one.
+- **`Audit Log > Export`** produces a ZIP of audit records. All ten columns are included by default, among them **User ID** (personal data), **Matched Text** (the content that triggered the pattern) and **Reasoning** (which can quote the content it judged). Deselect what an audience does not need.
+- **`Chat > Get Blob URL`** returns a signed link that needs **no oneAI credential** and lives for an hour. Anyone holding it — anyone who can open the execution, or read n8n's database — can fetch the blob until it expires, without an account and without membership of the space. Prefer `Chat > Get Blob`, which returns the bytes as binary data, when the link does not need to leave n8n.
+- **Destructive operations** — `Chat > Delete`, `Space > Delete File`, `Space > Remove User`, `Space > Remove Team`, and `Chat > Save Blob to Space` with **Replace** on — do what they say, with no confirmation step.
+
+The credential is the real boundary here, not the node: an agent can do what the API key can do. If that is too much, give the agent a credential for a oneAI user who is not an organization admin — `Audit Log > Review` is admin-only server-side.
+
+### What n8n stores
+
+Everything a node outputs is written to the execution record and is readable by anyone who can open that execution or read n8n's database. For this node that can include chat transcripts, the full extracted text of space documents, audit-log archives and the signed blob URL above. That content then lives under **n8n's** execution-pruning settings rather than under oneAI's retention policy — worth checking `EXECUTIONS_DATA_MAX_AGE` and `EXECUTIONS_DATA_PRUNE` on your instance before running these operations at volume.
 
 ## What this node does not do
 
@@ -257,7 +336,7 @@ Honesty is more useful here than a coverage percentage. oneAI's API is far large
 
 - **No sign-in, sign-up or OAuth flows.** The node authenticates with an API key, and that is the whole authentication story. Spaces backed by an OAuth provider still need their authorization code and signed state issued by oneAI outside n8n.
 - **No administration.** Teams, members, organization settings, API keys, webhooks, agent builder and integrations are not exposed. They are administrative surfaces rather than workflow junctions.
-- **No audit log access yet.** This one is a known gap rather than a decision.
+- **No way to remove a message rating** once `Chat > Rate Message` has set one. oneAI supports it (a `DELETE` on the same path) and the node deliberately does not, so that nobody assumes a rating placed by a workflow is permanent.
 - **No trigger.** The node is an action node; it cannot start a workflow when something changes in oneAI. Poll with a Schedule Trigger in front of a list operation.
 - **No streaming.** `AI > Create Response` returns the completed answer, not a token stream.
 - **No tool/function-calling definitions** on `AI > Create Response`.
@@ -268,6 +347,8 @@ Honesty is more useful here than a coverage percentage. oneAI's API is far large
 The node declares `typeVersion: 1`, which is what every workflow that uses it stores. Upgrading the package replaces the code behind that version rather than adding a new one, so an upgrade reaches every existing workflow.
 
 Operations added in a release are additive and safe. Where a release has had to remove or change an operation — because the oneAI endpoint behind it no longer exists — it is named in that release's notes.
+
+**Failed requests and your credential.** When an HTTP request fails, the node strips the credential out of the underlying error before turning it into an n8n error, so a failed execution of this node does not carry your API key in its saved record. That scrub is ours and does not depend on the host: n8n 1.102.0 and later (which ship `n8n-workflow` 1.99.0 and later) already suppress it, and n8n 1.101.0 and earlier do not — measured by walking the thrown error's own properties on both. The scrub was verified on n8n 2.37.9, where it is belt and braces; no instance older than 1.102.0 was available to observe it doing the work. Note that this is a property of *this* node, not of your instance: on an n8n older than 1.102.0, treat a failed execution of any other credentialed node as containing that node's credential.
 
 ## Development
 

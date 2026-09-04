@@ -10,6 +10,225 @@
 
 ---
 
+## Session 0005 — Three loops closed: file ingestion, chat artefacts, compliance review (2026-09-04)
+
+**Package version:** `0.2.0`, unchanged. npm `latest` is `0.2.0`. 🔴 The bump to `0.3.0` is the
+owner's act at release time and the guard hook refused it during the run — the tag decides which
+code, `package.json` decides which version, and only a *release* publishes.
+**Branches:** `feat/v0.3.0-loops-and-compliance`, HEAD `45ab7ff`, five commits on top of
+`origin/main` (`a12406e`). Draft PR only; nothing merged, nothing released.
+**Agents involved:** `node-architect` (twice — selection, then a neighbourhood check),
+`node-implementer` (three passes: `space`, `chat`, `auditLog`), `node-validator` and `node-security`
+in parallel, `node-trace`, `node-docs`, with the orchestrator ruling the gate and re-measuring each
+agent's headline claim.
+**Task:** the owner's own words — *"run everything autonomously — snapshot (done), prompts (done),
+then the run, the live trace on `n8n.oneai.de`, fix runs where needed, and when everything is green a
+draft PR in English […]"* — the elision is the owner's standing ban on tool attribution, which is
+observed rather than quoted. With the standing definition of done: *"The
+owner opens `n8n.oneai.de` in the morning, finds the oneAI node with ten new operations that work,
+and finds a draft PR that explains them. A run that produces only a pull request is half finished."*
+
+### What shipped
+
+**64 → 75 operations across 11 resources**, no new resource, nothing renamed, nothing removed —
+measured by the drift check, which parses the router. Eleven operations, chosen as three *loops* a
+workflow could previously enter and not leave:
+
+| loop | operations |
+|---|---|
+| **File ingestion has an ending** | `space:getFileStats`, `space:getExtractedText`, `space:listFolder`, `space:renameFile` |
+| **What a chat produces can leave oneAI** | `chat:getBlob`, `chat:getBlobUrl`, `chat:saveBlobToSpace`, `chat:export`, `chat:rateMessage` |
+| **The compliance review closes outside oneAI's UI** | `auditLog:review`, `auditLog:export` |
+
+The unifying argument, and the reason these eleven rather than eleven others: each one is the
+*missing second half* of something the node already did. Uploading a file was possible and knowing
+when it had been embedded was not. Generating an image inside a chat was possible and getting the
+bytes out was not — `chat:get` returned a `blobId` for a door the node could not open. Reading the
+audit log was possible and answering it was not. Coverage of the API was never the measure; a loop
+that terminates is.
+
+### Three overturns, and they are the spine of the run
+
+**1. `space:renameFile` was ruled out, then ruled back in on measurement — and the trace then proved
+the ruling.** The neighbourhood check argued `space:transferFile` already served the story, and the
+orchestrator agreed and dropped it. Re-reading both endpoint descriptions instead of arbitrating
+between two agents reversed that: `rename`'s spec says in as many words that the path is metadata,
+so no bytes move and *the file keeps its embeddings*; `transfer` has **no description at all** in the
+snapshot, so there was no evidence whatsoever that a same-space move preserves them. That made the
+substitution a guess about the one property the ingestion loop exists to make observable.
+
+Live, on two files that were both `embeddingStatus: done` in one space:
+
+| | operation | `embeddingStatus` after | `getExtractedText` after |
+|---|---|---|---|
+| `probe2.txt` | `transfer` to the **same** space, `mode: move` | `done` → **`notEmbedded`** | **404** |
+| `probe.txt` | `rename` | `done` → `done` | **200** |
+
+Transfer destroys the embedding even when nothing leaves the space. The operation would have been
+wrongly dropped, and the workflow that "worked" would have quietly thrown away the work the ingestion
+loop had just waited for. 🔴 **The run therefore shipped eleven operations where the owner ruled ten**,
+and that is stated plainly in the PR body rather than buried in a count.
+
+**2. A comment claiming the `.zip` suffix keeps n8n's Compression node working was falsified live.**
+`auditLog:export` names its output `audit-logs.zip` with MIME type `application/zip`, and the comment
+beside the constants credited the *file name*, quoting the error `File extension not found for binary
+data`. Measured on n8n 2.37.9 by breaking each constant in the built artefact and re-running the same
+workflow: with the suffix removed the archive still opens, because `prepareBinaryData` derives the
+extension from the explicit MIME type when the name supplies none; only breaking `OUTPUT_MIME_TYPE`
+as well fails, and with a different message (`Unsupported archive format ".bin"`). Both constants are
+still right — the *reason* recorded next to them was wrong, and a maintainer choosing which one was
+safe to change would have defended the wrong one. The comment now says which is load-bearing.
+
+**3. The validator reported that the credential scrub "introduces the codebase's first `unknown`".
+False — there are roughly twenty pre-existing uses**, across `dataset/helpers.ts`,
+`datasetRow/helpers.ts`, `space/create.operation.ts`, `compliancePattern/helpers.ts` and
+`dataset/updateSchema.operation.ts`. `withoutCredential(error: unknown)` follows house practice
+rather than breaking it, and a `catch` binding under `strict` **is** `unknown` whether or not anyone
+writes it down. Recorded here on purpose: *a finding document is evidence, not scripture* applies to
+the validator's document exactly as it applied to the `pairedItem` write-up that coined the rule.
+
+### What the live trace proved, and what it did not
+
+Bench `oneai-devtest-n8n`, n8n **2.37.9**, real node type `@oneai-eu/n8n-nodes-oneai.oneAi` installed
+as a community package, against real oneAI on devtest. Evidence is persisted `execution_data` read
+out of Postgres, not screenshots of a green tick.
+
+- **Ten of the eleven ran end to end.** 🔴 **`auditLog:export` did not, and the fault is oneAI's:**
+  `POST /api/audit/logs/export` answers **HTTP 500** for every body shape, logging
+  `column reference "org_id" is ambiguous`. The export query joins `users` while the shared filter
+  builder emits an unqualified `WHERE org_id = …`, so it is broken for every caller. Our half was
+  proven against a local stub serving a genuine ZIP — the request the node sends is the real one, all
+  ten field keys present — and the archive opens through Compression into Extract from File. The
+  operation has **never returned a real archive**, and the README and the PR body say so.
+- **Item lineage, both halves observed** — the standard this repository holds a fix to. Shipped
+  build: 20 rows from 2 input items, `{"item":0}` ×10 and `{"item":1}` ×10. Defect reintroduced in
+  the *built* artefact: `{"item":0}`…`{"item":9}`, eight input items that did not exist, with n8n
+  reporting `success` and no warning at all. Artefact restored, tally restored.
+- 🔴 **A defect that shipped in `0.2.0`, found only by running it.** `auditLog:list` asked the API
+  for its own default limit of 50 and displayed 30 items: the endpoint caps a page at 30 and
+  **clamps silently** rather than rejecting. The cap is prose in the spec, not a schema `maximum`, so
+  no drift tier can see it. The first fix capped the field at 30 and n8n's own lint rules rejected it
+  — they fix a `limit` parameter's default at 50 and its description verbatim — so the promise is
+  kept in code instead, by paging until the limit is satisfied. The convention was worth more than a
+  bespoke warning.
+- **`since` is exclusive**, not "at or after" as the field said. Exclusive is the right behaviour for
+  a scheduled poll; the description was corrected, the parameter *name* left alone.
+- **`chat:getBlobUrl`'s link lives one hour**, needs no credential, and both the signature and the
+  expiry are enforced (tampered → 401, expired → 401). The API returns a **relative** path, so the
+  node now emits `absoluteUrl` beside the verbatim `url`.
+- **No credential in the persisted execution record** across a 401, a 500 and a 404 — searched in the
+  raw rows, not the UI. 🔴 And falsified honestly: with the scrub *removed* the record was
+  byte-identical and still clean, so on n8n 2.37.9 the host alone suppresses it. The scrub's value is
+  for hosts below n8n 1.102.0, and that is **NOT-REACHED**. It stays, because `"n8n-workflow": "*"`
+  with no `engines` means we do not get to assume the newer host — **OWNER-10**.
+- **The panel, in a real browser**: typing `oneai` returns the node first, *Installed*, *Verified*,
+  **Actions (75)**, every new operation present under its resource heading. Caveat stated rather than
+  smoothed: no sign-in for the bench was available, so this was an identically installed throwaway
+  n8n 2.37.10. Thirty seconds of the owner's time closes it on the bench itself.
+- **What an AI agent actually reads is the `action` string.** Captured from a logging stub: the tool
+  schema's `description` is literally *"Submit a review verdict on an audit log in oneAI"*. That
+  settles the argument for naming it that way instead of "Update" — a model driving the node would
+  have been told nothing about what it does to a compliance record.
+
+### Decisions worth their reasoning
+
+- **`auditLog:export` defaults to all ten columns on**, against the analysis, which proposed a
+  data-minimising default of seven. An audit export without `userId` does not answer the question an
+  audit export is opened to answer. The author explicitly chose to export audit logs; the
+  unsurprising default is everything, narrowing is one click, and the three sensitive columns carry
+  the bluntest per-field warnings in the node.
+- 🔴 **`auditLog:list` gained `since` and `riskLevel` — the one place the run went past the ruled
+  scope, and the PR body says so.** Without `since`, the compliance-poll story does not work: a
+  scheduled poll re-reads the same logs on every tick and the Slack channel repeats itself until
+  someone turns the workflow off. Optional parameters on a shipped operation are additive and safe on
+  `typeVersion: 1`; shipping a headline story that repeats itself is not.
+- **A dead option value was removed from the same operation.** `origin` offered
+  `onegateway:compliance`, which is not in the spec's nine-value enum and could only ever produce a
+  400. Removing it is strictly safe — nothing that worked can stop working — and 🔴 **no checker in
+  this repository can see this class**: drift compares shapes, not enum values, and lint and `tsc`
+  see a string. It was found because an agent read the enum.
+- **`chat:export`'s `full` is sent only when it is true.** A query string carries `false` as the
+  non-empty string `"false"`, which a permissive parser reads as truthy, and the failure mode is
+  silently exporting exactly the values compliance redaction removed.
+- **`auditLog:review` defaults to `block`.** A half-configured node declines a held request rather
+  than approving one.
+- **`chat:getBlob`'s default MIME type changed from `image/png` to `application/octet-stream`**,
+  after the trace showed 31 bytes of CSV arriving as `fileType: image` with a bare UUID for a name.
+  A default is a claim; being honest about unknown bytes beats a preview that lies.
+- **The gate ruling froze `oneAiApiRequestRaw` and then the run modified it.** The freeze was aimed
+  at the helper's *contract* — signature, return type, success path — and was drafted as though the
+  file were the contract, so a `catch`-arm-only credential scrub tripped a rule it never crossed in
+  substance. The validator was right to stop on it, and the lesson is the drafting: name the
+  contract, not the file.
+
+### Checker gaps, proven rather than suspected
+
+19 mutations applied and reverted; 16 expected red, 16 actually red. What stayed silent is now
+**BL-20**, **BL-21**, **BL-23**, **BL-24** and **BL-25**: a renamed *query* parameter only WARNs
+while a renamed *body* field FAILs; the drift check does not descend into nested request-body objects
+(the closed-union type annotation on `auditLog:export`'s `fields` is the *only* thing catching that,
+and is therefore load-bearing); the ZIP constants and the dead-enum class move nothing anywhere; the
+lineage checker reads helpers under `actions/` only; and `panel-check.mjs` reads `modes.ts`, so it
+did not move when a router arm was commented out — it is not a second opinion on the shipped surface.
+
+### A finding no checker could ever have made
+
+The bench carries the owner's real work: **26 saved workflow nodes** of this node's type, every one
+`typeVersion: 1`. One of them — the morning-briefing workflow — contains a node whose operation is
+`__CUSTOM_API_CALL__`, which this node **refuses at runtime**. `BL-10` was parked at P3 on the
+reasoning that nobody used it; somebody does, and the workflow cannot run as saved. Raised to P1. It
+was found by reading what people had built, which is not a thing any gate in this repository can do.
+
+### Not reached
+
+- **`auditLog:export` against real oneAI** — oneAI 500s (`BF-4`). Never proven end to end.
+- **The nodes panel on `n8n.oneai.de` itself**, and the credential-test *button* in its UI — no
+  sign-in for the bench. Both proven by equivalent means and both stated as substitutions.
+- **The credential scrub on a host below n8n 1.102.0** — proven *unnecessary* on 2.37.9, never proven
+  *necessary*, because no such host was available.
+- **Gateway-plan gating** (`BL-9`) — the devtest org is `team`, so prefix routing is proven and
+  plan-gating is not. Unchanged from the last run.
+- **`thumbnail: true`** — a no-op on this oneAI build; full and thumbnail responses are byte-identical
+  (`BF-5`), so the parameter is exercised and its effect is unobservable.
+- **The other 64 operations** — unchanged and untraced this run.
+- **`@n8n/scan-community-package`** — takes a package name and downloads from npm, so it cannot see a
+  branch. NOT-REACHED by construction, not by omission.
+
+### The bench
+
+`https://n8n.oneai.de` runs the branch as `0.2.0-bench.45ab7ff` — a marker version that cannot exist
+on npm and names the commit it was built from, which is the lesson from the round where the installed
+tarball called itself `0.2.0`. Verified after the deploy from n8n's own type cache: 75 actions on
+`@oneai-eu/n8n-nodes-oneai.oneAi` with categories `["Data & Storage","Productivity"]`, and `["AI"]`
+on the generated `…oneAiTool`. A demo workflow encoding the ingestion loop, its credential, and the
+rollback command are in `TODO.md`'s frontier. Trace data was removed before credentials, and the
+removals were verified by reading them back; the audit-log rows the trace created cannot be removed,
+because `audit_logs` is append-only, which is the point of an audit trail.
+
+## Session 0003 — 🔴 no entry was written (2026-09-04)
+
+**This heading is a reconstruction, added by Session 0004 from git and from `TODO.md`'s closed
+items — not from the run's own record, which does not exist.** It is here so the numbering does not
+imply a run that never happened, and so the gap is visible rather than silent. This is precisely the
+failure `CLAUDE.md` warns about: a run that continued past its own documentation phase and never
+wrote back.
+
+What the evidence shows that run did, between `0.2.0`'s preparation and `origin/main` at `a12406e`:
+released **v0.2.0** to npm (2026-09-04, PRs #4–#9 merged); removed the parked operation files and
+**wired up `auditLog`**, which was not dead — taking the surface to **64 operations across 11
+resources**, not the 62 across 10 the frontier claimed for a day afterwards; made the publish path
+reproducible (`package-lock.json` committed, `npm ci`, SHA-pinned actions); put a human approval
+in front of the publish job (`environment: npm-publish`); and made the node a `VersionedNodeType`
+with one version and no behaviour change.
+
+**Why it chose any of that is not recoverable.** The diff says what changed; nothing says who decided
+what, or what was overturned. Do not read this section as a record of that run's reasoning.
+
+**Session 0004 is not missing — it is in flight.** It is the pre-analysis that chose this release's
+scope, and it lives on the `analysis/v0.3.0-candidates` branch in its own pull request. Numbering
+here is chronological, so it takes 0004 and this run takes 0005; whichever pull request merges
+second will resolve a conflict in this file, and the resolution is to keep both entries.
+
 ## Session 0002 — The last additions before a release, and the documentation that had to catch up (2026-09-04)
 
 **Package version:** `0.2.0` — set by the owner during the run; npm `latest` is still `0.1.9`.
