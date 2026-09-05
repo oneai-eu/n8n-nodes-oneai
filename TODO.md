@@ -126,11 +126,31 @@ the defect.
 
 ### Everything else
 
-- **BL-19 · Five open Dependabot alerts, all toolchain-only.** `stream-json` (medium),
-  `nanoid` ×3 (high) and `uuid` (medium), all transitive **devDependencies** of the n8n tooling. The
-  package has **zero runtime dependencies**, so none of them is reachable by an installed node; the
-  exposure is the build host, not a user's n8n. v0.3.0 adds no dependency of any kind. Worth clearing
-  or dismissing with a reason, so the repository's alert count means something. *(P3)*
+- **BL-19 · The five Dependabot alerts are toolchain-only, and cannot be fixed from here.**
+  Assessed 2026-09-04, per advisory rather than by counting: 3 HIGH `nanoid`
+  (`GHSA-xwg4-73v4-xw9w`, `GHSA-2v37-7h3g-55p8`, `GHSA-28wg-ghj8-5hjv`), 1 MEDIUM `stream-json`
+  (`GHSA-528h-pc64-c93x`), 1 MEDIUM `uuid` (`GHSA-w5hq-g745-h8pq`).
+
+  🟢 **None of them reaches a user of this node.** `package.json` declares no `dependencies` at all
+  and `files: ["dist"]`, so the published tarball contains **zero** `node_modules` entries —
+  verified with `npm pack --dry-run`.
+
+  🔴 **Do not be misled by Dependabot calling `nanoid` "runtime" scope.** It arrives through
+  `n8n-workflow → @n8n/utils`, and `n8n-workflow` is our **peerDependency**: npm marks
+  peer-derived packages as non-dev, which is a labelling artefact. The `nanoid` a user actually
+  runs is whichever their own n8n ships. `stream-json` and `uuid` come through
+  `@n8n/node-cli → @n8n/ai-node-sdk` and are pure build tooling.
+
+  Not reachable in our build either: `n8n-node build` is `rimraf` + `tsc`, so `n8n-workflow`'s
+  runtime code is never executed — 70 of our imports from it are `import type`, and the four
+  value imports run inside the user's n8n, not ours.
+
+  **They cannot be patched from here.** `@n8n/utils` pins `nanoid` at exactly `3.3.8`, not a range,
+  so `npm update` moves nothing (tried; the lockfile did not change). Only an `overrides` entry
+  would force it — overriding a pin n8n chose, inside a package we do not ship, for no user benefit
+  and a real chance of breaking build or lint. **Revisit when `@n8n/node-cli` or `n8n-workflow`
+  update**, not before. *(P3)*
+
 - **BL-22 · Agent Builder (`api/agent-definitions`) stays out.** Owner ruling: not finished in oneAI
   yet. Also `POST …/runs` takes a body of `{}` with `additionalProperties: false`, so a run cannot be
   parameterised, and shipping even `agent:list` would freeze the resource name `agent` against a
