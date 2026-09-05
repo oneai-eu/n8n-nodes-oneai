@@ -274,7 +274,7 @@ the defect.
 
 ## ▶ For the oneAI API owners — not ours to fix
 
-- 🔴 **BF-4 · `POST /api/audit/logs/export` returns HTTP 500 for every caller.** The hub answers
+- 🔴 **BF-4 · `POST /api/audit/logs/export` returns HTTP 500 for every caller.** **Reported 2026-09-05 as [oneai/oneai#2709](https://forgejo.infra.oneai.eu/oneai/oneai/issues/2709)**, assigned to `oliver`, with the reproduction below and the note that qualifying only `org_id` would break the list endpoint. The hub answers
   `{"errorMessage":"Internal Server Error."}` and logs
   `PostgresError: column reference "org_id" is ambiguous` (SQLSTATE **42702**). The cause is visible
   in oneAI's own source: `src/api/audit/export.ts` runs
@@ -286,6 +286,16 @@ the defect.
   broken for everyone, not only for this node**, and it is why our `auditLog:export` — verified
   correct against the spec, and proven to produce an archive the Compression node opens when the
   endpoint answers — has never been traced end to end.
+
+  **Verified end to end 2026-09-05, and the distinction matters.** Until then the *mechanism* was
+  read from source and schema while the HTTP 500 itself came only from the trace agent's report —
+  second-hand, which is the class of gap this repository has been wrong about before. It is now
+  reproduced directly against the devtest database, no API key needed, because the ambiguity is a
+  pure SQL property: **(A)** the export's exact query shape raises
+  `ERROR: column reference "org_id" is ambiguous` pointing at the `WHERE` line; **(B)** the same
+  query with `al.org_id` runs clean, which proves the fix; **(C)** the list's shape — same builder,
+  no join — runs clean, which explains why only the export fails. What is still second-hand is only
+  that the endpoint surfaces this as a 500 rather than some other status.
 
   *Corrected 2026-09-05.* The trace report first cited `audit.ts:1101`; that line is the TypeScript
   field `lastNameLength?: number`, not SQL. Re-derived from a clean checkout of `origin/main` at
