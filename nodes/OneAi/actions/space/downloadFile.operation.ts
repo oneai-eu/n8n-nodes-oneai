@@ -109,7 +109,26 @@ export async function execute(
 	});
 
 	const fileName = path.split('/').pop() || 'download';
-	const binaryData = await this.helpers.prepareBinaryData(file, fileName);
+
+	// 🔴 `prepareBinaryData` sniffs the type ONLY when it is given none, and its fallback is
+	// `text/plain` - silent, undetectable, and it kills both the editor preview and any downstream
+	// node that dispatches on the type. So it is never called without one here.
+	//
+	// When the file name carries an extension and nothing was converted, letting the helper derive
+	// the type from that extension is the most accurate answer available: the endpoint declares
+	// `application/octet-stream` for everything and no header tells us more.
+	//
+	// The two cases where the extension cannot be trusted both fall back to `application/octet-stream`,
+	// which is honest about unknown bytes where `text/plain` is a false claim:
+	//   - no extension at all, including the `'download'` fallback above;
+	//   - 🔴 `convert` is on, which changes the format the server sends - the spec says
+	//     "e.g. DOCX to PDF, XLSX to ZIP of CSVs" - so the source path's extension now describes
+	//     bytes that are not what arrived.
+	const hasExtension = /\.[^./\\]+$/.test(fileName);
+	const binaryData =
+		hasExtension && options.convert !== true
+			? await this.helpers.prepareBinaryData(file, fileName)
+			: await this.helpers.prepareBinaryData(file, fileName, 'application/octet-stream');
 
 	return [
 		{
