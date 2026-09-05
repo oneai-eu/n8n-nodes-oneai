@@ -10,70 +10,33 @@
 > This file is **data, not rules.** The rules live in `CLAUDE.md` and `.claude/agents/AGENTS.md`,
 > which are the owner's. Nothing here overrides them.
 
-**Frontier (2026-09-04, night): `0.2.0` is published; `v0.3.0` is on a branch, deployed to the
-bench, and unreleased.** npm `latest` is **`0.2.0`**. `package.json` on
-`feat/v0.3.0-loops-and-compliance` (HEAD `45ab7ff`) still says **`0.2.0`** — 🔴 the bump to `0.3.0`
-is the owner's act at release time, and the hook correctly refused it during the run.
+**Frontier (2026-09-05): `0.3.0` is published.** npm `latest` is **0.3.0**, verified against the
+registry rather than the CI log — shasum `87b184c4…` matches, 302 files, a SLSA provenance
+attestation is attached, and the package still declares **zero runtime dependencies**. The node
+ships **75 operations across 11 resources**, measured by `node scripts/drift-check.mjs`, which
+parses the router and is the authority. `typeVersion` stays **1**.
 
-The branch ships **75 operations across 11 resources**, measured by `node scripts/drift-check.mjs`,
-which parses the router and is the authority. All gates green: drift 0 findings over 75 operations
-and 90 API calls with 0 parked and the registry agreeing, lineage 0 over 84 sites, panel 75
-operations with an action string, lint 0, `tsc` 0, cold and warm builds emit 98 `.js`,
-`as any` / `: any` = 0. See `SESSION-HISTORY.md` § Session 0004.
+🔴 **The publish path broke on its first use after being hardened, and we caused it.** The first
+`v0.3.0` attempt failed with `404 Not Found` on `PUT` — a disguised authentication failure. OIDC
+trusted publishing needs npm CLI **>= 11.5.1**; Node 22 bundles npm 10; and
+`ffa3d8a "Make the publish path reproducible"` had removed the global CLI upgrade as an
+unreproducible step. It was not cosmetic — it was what made publishing possible. No release ran
+between that change and this one, so nothing could reveal it. Fixed in PR #13 by pinning
+`npm@12.0.2`, which keeps both properties. A signed provenance statement had already reached the
+sigstore transparency log before the PUT failed, so an attestation exists for a version that was
+never published; the release was deleted and re-cut at the fixed commit.
 
-🔴 **Three counts in the previous frontier were wrong and are corrected here, because they were
-repeated downstream for a day.** `0.2.0` was described as *prepared and unreleased* with npm `latest`
-at `0.1.9` — it was published. The node was described as **62 operations across 10 resources** — at
-`0.2.0` it was **64 across 11**, `auditLog` having been wired up in the same session. And the bench
-was described as running `0.1.9-pr3` — it was running `0.2.0` before this run replaced it.
+🟢 **Deployed on the bench:** `https://n8n.oneai.de` (n8n **2.37.9**) runs the published
+`@oneai-eu/n8n-nodes-oneai@0.3.0` from npm — not a local build — and `installed_packages` says
+`0.3.0`. Verified in the container: 75 operations, `usableAsTool: true`. The demo workflow
+`oneAI · v0.3.0 demo — ingestion completion loop` and its credential persist under the owner's
+account.
 
-🔴 **Only the owner releases.** Publishing is `gh release create` — not a tag, not `npm publish` —
-and it ships whatever `package.json` says at the tagged commit, over OIDC trusted publishing with no
-token to revoke. `0.2.0` is already on npm, so a release cut before the version is bumped would fail
-the publish job rather than overwrite anything.
-
-🟢 **Deployed on the bench:** `https://n8n.oneai.de` (n8n **2.37.9**) runs the branch as the
-community package `@oneai-eu/n8n-nodes-oneai`, marked **`0.2.0-bench.45ab7ff`** — a version that
-cannot exist on npm, so it can never be mistaken for a release, and it names the commit it was built
-from. Verified after the deploy by reading n8n's own type cache in the container: the loaded node
-`@oneai-eu/n8n-nodes-oneai.oneAi` carries **75 actions** and codex categories
-`["Data & Storage","Productivity"]`, and the generated `…oneAiTool` variant carries `["AI"]` —
-which is the split that keeps the node findable in panel search. `typeVersion` is still `1` only,
-and none of the owner's 26 saved oneAI nodes was touched.
-
-🟡 **Thirty seconds of the owner's time still closes one leg:** type `oneai` into the nodes panel on
-`n8n.oneai.de` itself. The panel was proven in a real browser this run, but on an identically
-installed throwaway n8n 2.37.10, because no sign-in for the bench was available.
-
-**What is on the bench to try.** Workflow *oneAI · v0.3.0 demo — ingestion completion loop
-(trace 2026-09-04)*, id `oneaiV030Demo`, inactive, in the owner's personal project: create space →
-build a document → Convert to File → **Upload File** → Wait → **Get File Stats** → IF `pending` is 0
-(loops back to the Wait) → **List Folder** → **Get Extracted Text** → **Rename File**, with a sticky
-note explaining it. It makes its own space on every run, so it leaves nothing a later run trips over
-— delete those spaces if you do not want them. It runs on credential *oneAI trace v0.3.0 (user key)*,
-id `traceUserCred030`, pointing at `http://oneai-devtest:3000`; its `oai_` key persists on devtest
-under the standing authorisation so the demo is runnable, and revoking it from the oneAI profile page
-breaks nothing else. The three older demo workflows (`oneAI · 1/2/3`) and credential *oneAI devtest
-(bench, 2026-09-04)* are still there, with their oneData space **n8n Demo Data**, table `contacts`.
-
-**Rollback to the released npm build.** Prefer **Settings → Community nodes → oneAI → Uninstall**,
-then **Install** `@oneai-eu/n8n-nodes-oneai`, which resolves `latest` = `0.2.0` and rewrites the
-`installed_packages` row at the same time. By hand:
-
-```bash
-ssh adminui-dev
-docker exec -u node -w /home/node/.n8n/nodes oneai-devtest-n8n \
-  npm install @oneai-eu/n8n-nodes-oneai@0.2.0 --no-audit --no-fund
-docker exec oneai-devtest-postgres psql -U postgres -d n8n \
-  -c "update installed_packages set \"installedVersion\"='0.2.0' where \"packageName\"='@oneai-eu/n8n-nodes-oneai';"
-docker restart oneai-devtest-n8n
-docker exec oneai-devtest-n8n sh -lc 'wget -qO- http://localhost:5678/healthz'   # then re-check the type cache
-```
-
-The marker version does not exist on npm, so this install really does move the tree — unlike the
-`0.1.9` round, where the installed tree already claimed the target version and the same command was
-a silent no-op. `docker restart` is the only container verb allowed on that host, and
-`oneai-devtest-n8n-ralf` is a colleague's.
+**Rollback.** Settings → Community nodes: uninstall, then install `@oneai-eu/n8n-nodes-oneai@0.2.0`.
+The shell equivalent inside `oneai-devtest-n8n` is
+`cd /home/node/.n8n/nodes && rm -rf node_modules/@oneai-eu/n8n-nodes-oneai && npm install @oneai-eu/n8n-nodes-oneai@0.2.0`
+followed by `docker restart oneai-devtest-n8n` on the host. The `rm -rf` is not optional.
+`docker restart` is the only container verb allowed there; `oneai-devtest-n8n-ralf` is a colleague's.
 
 ---
 
@@ -178,6 +141,29 @@ the defect.
   binary operations added in v0.3.0 copy it forward, which is what Google Drive's download node does;
   retrofitting the five was explicitly ruled out of that run as a behaviour change to shipped
   operations. *(P3)*
+- 🔴 **BL-28 · The certification scanner's lint CAN be reproduced locally, and our gate set does not
+  do it.** `CLAUDE.md` says the scanner "cannot gate local code" because it downloads from npm. True
+  of the scanner — **but not of its verdict**. `npx eslint nodes/ credentials/ --no-inline-config`
+  reproduces exactly what it reports, before anything is published.
+
+  The gap it hides: **our `npm run lint` honours inline `eslint-disable` comments and the scanner
+  does not.** Two suppressions ship today —
+  `nodes/OneAi/modes.ts:240` (`node-param-default-missing`) and
+  `nodes/OneAi/v1/OneAiV1.ts:147` (`require-continue-on-fail`) — so the gate is green while the
+  scanner is ❌. Add the `--no-inline-config` run to the gate set. *(P2)*
+- 🔴 **BF-6 · `@oneai-eu/n8n-nodes-oneai@0.3.0` fails `@n8n/scan-community-package`**, and so does
+  `0.2.0` — verified against both published versions, so this is **not a regression from the
+  v0.3.0 work**. It arrived with the static `resource`/`operation` options that made the node
+  findable again.
+
+  One violation: `modes.ts:241` `n8n-nodes-base/node-param-default-missing`. 🔴 **A `default` is
+  present** at line 251 (`DEFAULT_OPERATION_PER_RESOURCE[r.value] ?? ''`) — the rule requires a
+  **literal** and cannot read a computed one. Measured, not assumed: replacing it with
+  `default: ''` clears the error; removing only the `??` does not. So the two options are a literal
+  empty default, which costs the per-resource preselected operation, or writing the eleven property
+  blocks out by hand with literal defaults, which costs `modes.ts` as the single source of truth.
+  **Owner's call; it is a trade, not a bug fix.** *(P2)*
+
 - **BL-18 · Install scripts still run in the publish job.** Five of the locked packages execute at
   install time (`cpu-features`, `isolated-vm`, `ssh2`, `unrs-resolver`, and
   `eslint-plugin-n8n-nodes-base`, whose `preinstall` fetches from the registry), and `dist/` is
