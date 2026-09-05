@@ -13,7 +13,7 @@ This codebase has a settled shape. Read a neighbouring `*.operation.ts` in the s
 match it: the description array, the `execute(this, index)` signature, the `oneAiApiRequest` call,
 the return. Inventing a second shape is how a codebase stops being reviewable.
 
-## Four things that are easy to get wrong here
+## Six things that are easy to get wrong here
 
 🔴 **1. Wire it into the router.** An operation file that `actions/router.ts` does not dispatch is
 invisible — no lint rule notices, and 29 files are in exactly that state today. Add the arm and the
@@ -59,16 +59,49 @@ merely correct proves nothing — you have to see it move. And keep the arm expl
 duck-typed (`if ('executeAll' in mod)`): the router is the authority on the shipped surface, and a
 surface expressed in a shape a parser cannot read is a surface nobody is checking.
 
+🔴 **5. A BINARY ENDPOINT NEEDS THE RAW HELPER *AND* AN EXPLICIT MIME TYPE.**
+
+Any operation reading an `application/octet-stream` (or `application/zip`, or `application/pdf`)
+response goes through `oneAiApiRequestRaw`, never the JSON helper — that mistake shipped twice, in
+`artifact:exportPdf` and `space:downloadFile`, and passes every tier of the drift check because
+there is no request body to disagree about. Then set **both** an output filename and a MIME type as
+module constants, and pass the MIME type to `prepareBinaryData` explicitly.
+
+Measured 2026-09-05, and it overturned our own source comment: **the MIME type is the load-bearing
+one.** `prepareBinaryData` derives the file extension from it when the filename supplies none, so
+stripping `.zip` from `audit-logs.zip` still works, while breaking `application/zip` fails
+downstream with `Unsupported archive format ".bin"` in the Compression node. Never let the helper
+sniff: its last fallback is `text/plain`, which is silent, wrong and undetectable.
+
+🔴 **Nothing catches this.** Breaking either constant leaves `tsc`, lint, drift, lineage and panel
+all at exit 0 (`TODO.md` BL-24) — the failure surfaces in the *next* node of someone's workflow.
+
+🔴 **6. AN INLINE `eslint-disable` IS A CERTIFICATION FAILURE, NOT A LOCAL DECISION.**
+
+`npm run lint` honours suppressions; `@n8n/scan-community-package` does not. That is how `0.2.0` and
+`0.3.0` both shipped failing certification with a green gate set. Before you finish, run
+
+```bash
+npx eslint nodes/ credentials/ --no-inline-config
+```
+
+which reports exactly what the scanner will. If you must suppress a rule, record **why the scanner
+should be wrong too** — and expect that to be an owner decision rather than yours.
+
 ## Compatibility
 
 Adding an operation or an optional parameter is safe. **Renaming an operation** breaks at runtime.
 **Renaming a parameter** breaks **silently** — `getParameterIssues` never validates option
-membership. If the ruled work requires either, **stop and report it**; it is an owner decision and
-the answer may be to move to `VersionedNodeType` first.
+membership. If the ruled work requires either, **stop and report it**; it is an owner decision.
+
+The node is already a `VersionedNodeType` (`OneAi.node.ts` → `v1/OneAiV1.ts`, `nodeVersions: { 1 }`),
+so adding a `typeVersion` is now affordable — but nothing about the constraint softened, and it is
+not theoretical: the bench carries **26 saved nodes of this type**, all `typeVersion: 1`, inside the
+owner's real automations. A renamed parameter breaks those and reports nothing.
 
 ## Before you finish
 
-- `npm run lint`, `npx tsc --noEmit`
+- `npm run lint`, `npx tsc --noEmit`, and `npx eslint nodes/ credentials/ --no-inline-config`
 - 🔴 **`npm run build`, and then check it actually emitted JavaScript** —
   `find dist -name '*.js' | wc -l` must be non-zero, on a clean tree *and* on a warm one. The build
   has reported "Build successful" while producing nothing but SVGs; `prepublishOnly` passes on that
@@ -78,6 +111,13 @@ the answer may be to move to `VersionedNodeType` first.
   means its extractor is broken and every number it printed is fiction — that is never a finding to
   wave through. Oli's standing rule is why the sweep is over everything: request bodies change, and
   the operation you did not open is the one that broke. Fix what they find, or report it.
+- 🔴 **Re-read by hand what no checker reads.** Every one of these was proven silent by mutation, so
+  a green run says nothing about them: a renamed **query parameter** (drift only WARNs and exits 0 —
+  BL-21), a renamed key **inside** a nested request-body object (BL-23), a binary operation's
+  filename/MIME constants and a reinstated dead enum **value** (BL-24), lineage in a helper **outside
+  `actions/`** (BL-25), and a **response** content type read through the wrong transport helper — the
+  drift check compares requests only. `panel-check.mjs` reads `modes.ts`, not the router, so it will
+  not confirm your operation ships; only the drift and lineage counts move.
 - Write `docs/orchestration/<run>/implementer.md`: what you built, every deviation from the ruled
   design with its reason, and what you found but deliberately did not fix.
 

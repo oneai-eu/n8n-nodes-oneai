@@ -12,7 +12,12 @@
 
 **Frontier (2026-09-05): `0.3.0` is published.** npm `latest` is **0.3.0**, verified against the
 registry rather than the CI log — shasum `87b184c4…` matches, 302 files, a SLSA provenance
-attestation is attached, and the package still declares **zero runtime dependencies**. The node
+attestation is attached, and the package still declares **zero runtime dependencies**. 🔴 **And the
+build reproduced:** the published tarball's `dist/` is **byte-identical** to a local build of `main`
+— 302 files, 0 differences, tarball sha1 matching the registry. `CLAUDE.md` warns that what ships is
+"not provably what anyone tested" because `dist/` is built in the publish job from dependencies
+resolved that minute. For this release that is **empirically false**; the structural risk stands
+(reproducing once does not guarantee it), but the claim in its strongest form does not. The node
 ships **75 operations across 11 resources**, measured by `node scripts/drift-check.mjs`, which
 parses the router and is the authority. `typeVersion` stays **1**.
 
@@ -163,6 +168,22 @@ the defect.
   empty default, which costs the per-resource preselected operation, or writing the eleven property
   blocks out by hand with literal defaults, which costs `modes.ts` as the single source of truth.
   **Owner's call; it is a trade, not a bug fix.** *(P2)*
+
+- 🔴 **BF-7 · `space:downloadFile` can still label a file `text/plain`, silently.**
+  `downloadFile.operation.ts:112` calls `prepareBinaryData(file, fileName)` with **no MIME type**,
+  and `fileName` falls back to `'download'` when the path has no basename extension
+  (line 111). `prepareBinaryData` only sniffs when no type is given and its fallback is
+  `text/plain` — so a downloaded PDF or image with an extensionless path arrives labelled as text,
+  which kills the editor preview and misleads every downstream node.
+
+  It is the **one shipped call site** that can still reach this: the other eight all pass a type
+  (`exportCsv`, `getBlob`, `editImage`, `generateImage`, `generateSpeech`, `auditLog:export`,
+  `exportPdf`, `exportPptx`). Found by the docs agent while writing the rule that forbids it,
+  which is the right way round.
+
+  Ships in `0.3.0`. **Minimal fix:** keep deriving the type from the filename when it has an
+  extension — that behaviour is correct — and pass `application/octet-stream` only when it does
+  not. Needs a release to reach anyone, so it belongs with the next one rather than alone. *(P2)*
 
 - **BL-18 · Install scripts still run in the publish job.** Five of the locked packages execute at
   install time (`cpu-features`, `isolated-vm`, `ssh2`, `unrs-resolver`, and
