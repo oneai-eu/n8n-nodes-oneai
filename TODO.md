@@ -176,18 +176,21 @@ the defect.
   `nodes/OneAi/modes.ts:240` (`node-param-default-missing`) and
   `nodes/OneAi/v1/OneAiV1.ts:147` (`require-continue-on-fail`) — so the gate is green while the
   scanner is ❌. Add the `--no-inline-config` run to the gate set. *(P2)*
-- 🔴 **BF-6 · `@oneai-eu/n8n-nodes-oneai@0.3.0` fails `@n8n/scan-community-package`**, and so does
-  `0.2.0` — verified against both published versions, so this is **not a regression from the
-  v0.3.0 work**. It arrived with the static `resource`/`operation` options that made the node
-  findable again.
+- ✅ **BF-6 · CLOSED — the certification scanner passes.** Fixed in `0.3.2`, and it was **not the
+  trade this entry described.** The earlier reading — literal `default: ''` at the cost of the
+  per-resource preselection, or eleven hand-written property blocks at the cost of `modes.ts` as the
+  single source of truth — came from testing only *literal versus member expression*. The evidence
+  against it was in the same file: `resourceProperty` passes with `default: DEFAULT_RESOURCE`, a
+  plain identifier. 🔴 **The rule cannot resolve a member expression; an identifier is fine.** So
+  binding `const defaultOperation = DEFAULT_OPERATION_PER_RESOURCE[r.value] ?? ''` inside the `.map()`
+  satisfies it with **zero behaviour change** — the emitted `operationProperties` were diffed
+  before and after and are identical, 11 properties with the same defaults.
 
-  One violation: `modes.ts:241` `n8n-nodes-base/node-param-default-missing`. 🔴 **A `default` is
-  present** at line 251 (`DEFAULT_OPERATION_PER_RESOURCE[r.value] ?? ''`) — the rule requires a
-  **literal** and cannot read a computed one. Measured, not assumed: replacing it with
-  `default: ''` clears the error; removing only the `??` does not. So the two options are a literal
-  empty default, which costs the per-resource preselected operation, or writing the eleven property
-  blocks out by hand with literal defaults, which costs `modes.ts` as the single source of truth.
-  **Owner's call; it is a trade, not a bug fix.** *(P2)*
+  *Carried forward:* the second suppression stays. `@n8n/community-nodes/require-continue-on-fail`
+  at `v1/OneAiV1.ts:147` is a genuine false positive — `execute()` delegates to `router()`, which
+  owns the item loop and handles `continueOnFail()` at two sites — and **the scanner does not run
+  that rule**; it reported one violation, not two. It is local gate noise, not a certification
+  issue. Worth revisiting only if the scanner's rule set grows.
 
 - ✅ **BF-7 · CLOSED — `space:downloadFile` can no longer label a file `text/plain`.** It was the
   one shipped call site passing no MIME type to `prepareBinaryData`, whose sniffing fallback is
