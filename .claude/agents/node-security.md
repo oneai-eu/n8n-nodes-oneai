@@ -55,14 +55,39 @@ run touches it.
 Node output is persisted and visible to anyone who can open the execution. Provider error bodies land
 there. Ask what a oneAI error body can contain.
 
+**3b. 🔴 What a model can reach — `usableAsTool` is all-or-nothing.**
+
+`UsableAsToolDescription.replacements` is `Partial<Omit<INodeTypeBaseDescription, 'usableAsTool'>>`
+and `INodeTypeBaseDescription` has **no `properties` field**, so there is no mechanism to hide an
+operation from the tool variant. Every operation the node ships — including state-changing ones like
+`auditLog:review` — is one hop from any AI Agent that adds this tool, and the **`action` string is
+the only description the model gets**. Audit that string, not the parameter descriptions: an action
+that understates what an operation does is the exploitable part. Precedent, measured rather than
+assumed: n8n's own `SlackV2` is `usableAsTool: true` and exposes `archive`, `kick` and `delete`, so
+this is n8n's accepted posture and not ours to unilaterally refuse — but it does mean "a model could
+call it" is never by itself a finding, and "a model could call it *believing it does something
+milder*" always is.
+
 **4. The npm supply chain — and here it has a shape worth looking at.**
 
-The publish job (`.github/workflows/publish.yml`) runs `npm install` against **no committed
-lockfile**, plus `npm install -g npm@latest`, then publishes `files: ["dist"]`. With zero runtime
-dependencies the exposure is through **devDependencies** — `typescript`, `@n8n/node-cli`, `eslint` —
-which are what actually build the artefact strangers install. What ships is not provably what anyone
-tested. Authentication is OIDC trusted publishing, so there is **no token to revoke**; the control
-surface is who may create a GitHub release.
+The publish job (`.github/workflows/publish.yml`) runs `npm ci` against the **committed**
+`package-lock.json` and publishes `files: ["dist"]`. With zero runtime dependencies the exposure is
+through **devDependencies** — `typescript`, `@n8n/node-cli`, `eslint` — which are what actually build
+the artefact strangers install, and `dist/` is still built inside that job rather than being anything
+anyone reviewed.
+
+🔴 **`npm install -g npm@12.0.2` in that job is load-bearing and must not be "hardened" away.**
+npm's OIDC trusted publishing needs CLI ≥ 11.5.1; Node 22 bundles npm 10, so without it npm falls
+back to token auth, finds no token — there deliberately is none — and the registry answers
+`404 Not Found` on `PUT`. Removing it is what broke `v0.3.0`. Pinning is the right shape here (which
+CLI builds the artefact is decided in the file), so read the pin as the mitigation, not as the risk.
+
+Authentication is OIDC trusted publishing, so there is **no token to revoke**. The control surface is
+therefore two things: who may create a GitHub release, and who may approve the `npm-publish`
+deployment environment the job waits on. Any change to either is a change to who can publish.
+
+🔴 **Nothing in this repository can test that path.** Every gate runs on a branch; nothing publishes.
+A diff touching `publish.yml` is unproven until a release runs, and saying so is part of the audit.
 Lifecycle scripts (`prepare`/`postinstall` are forbidden by lint; **`prepublishOnly` is permitted and
 is what we use — one character from a violation**, so do not let anyone "tidy" it). Any dependency
 added — the package has **zero** runtime dependencies today, and that is a property worth keeping.

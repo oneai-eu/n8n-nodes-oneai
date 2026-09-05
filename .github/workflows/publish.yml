@@ -21,5 +21,18 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
+      # 🔴 Node 22 bundles npm 10, and npm's trusted publishing (OIDC) requires CLI >= 11.5.1.
+      # Without this step npm cannot authenticate by OIDC at all: it falls back to token auth,
+      # finds no token - there deliberately is none - and the registry answers `404 Not Found` on
+      # PUT rather than an honest 403. That is exactly how the first v0.3.0 attempt failed on
+      # 2026-09-05, after a signed provenance statement had already been written to the
+      # transparency log.
+      #
+      # An earlier hardening dropped `npm install -g npm@latest` because an unpinned CLI builds the
+      # artefact, which was a fair point. What it missed is that the step was not cosmetic - it was
+      # what made publishing possible at all, and no release ran between the change and this one, so
+      # nothing could reveal it. Pinned here so both properties hold: new enough for OIDC, and which
+      # CLI built the artefact is decided in this file rather than in the minute the job runs.
+      - run: npm install -g npm@12.0.2
       - run: npm ci
       - run: npm publish --access public --provenance

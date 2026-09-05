@@ -10,51 +10,75 @@
 > This file is **data, not rules.** The rules live in `CLAUDE.md` and `.claude/agents/AGENTS.md`,
 > which are the owner's. Nothing here overrides them.
 
-**Frontier (2026-09-04, evening): `0.2.0` is prepared and unreleased.** `package.json` says
-`0.2.0`; npm `latest` is still `0.1.9`. The node ships **62 operations across 10 resources**
-(`0.1.9` shipped 49 across 8), measured by `node scripts/drift-check.mjs`, which parses the router
-and is the authority. All gates green on the release candidate: drift 0 findings over 62 operations
-and 76 API calls, lineage 0 over 104 sites, panel 0, lint 0, `tsc` 0, cold and warm builds emit 118
-`.js`. The README, the codex file and this file describe that surface and nothing else.
-See `SESSION-HISTORY.md` § Session 0002.
+**Frontier (2026-09-05): `0.3.0` is published.** npm `latest` is **0.3.0**, verified against the
+registry rather than the CI log — shasum `87b184c4…` matches, 302 files, a SLSA provenance
+attestation is attached, and the package still declares **zero runtime dependencies**. 🔴 **And the
+build reproduced:** the published tarball's `dist/` is **byte-identical** to a local build of `main`
+— 302 files, 0 differences, tarball sha1 matching the registry. `CLAUDE.md` warns that what ships is
+"not provably what anyone tested" because `dist/` is built in the publish job from dependencies
+resolved that minute. For this release that is **empirically false**; the structural risk stands
+(reproducing once does not guarantee it), but the claim in its strongest form does not. The node
+ships **75 operations across 11 resources**, measured by `node scripts/drift-check.mjs`, which
+parses the router and is the authority. `typeVersion` stays **1**.
 
-🔴 **Only the owner releases.** Publishing is `gh release create` — not a tag, not `npm publish` —
-and it ships whatever `package.json` says at the tagged commit, over OIDC trusted publishing with no
-token to revoke. `0.1.9` is already on npm, so a release cut before `0.2.0` landed would have failed
-the publish job rather than overwritten anything. Merge order is still **OWNER-1**.
+🔴 **The publish path broke on its first use after being hardened, and we caused it.** The first
+`v0.3.0` attempt failed with `404 Not Found` on `PUT` — a disguised authentication failure. OIDC
+trusted publishing needs npm CLI **>= 11.5.1**; Node 22 bundles npm 10; and
+`ffa3d8a "Make the publish path reproducible"` had removed the global CLI upgrade as an
+unreproducible step. It was not cosmetic — it was what made publishing possible. No release ran
+between that change and this one, so nothing could reveal it. Fixed in PR #13 by pinning
+`npm@12.0.2`, which keeps both properties. A signed provenance statement had already reached the
+sigstore transparency log before the PUT failed, so an attestation exists for a version that was
+never published; the release was deleted and re-cut at the fixed commit.
 
-🟢 **Deployed on the bench:** `https://n8n.oneai.de` (n8n **2.37.9**) runs the pre-release build as
-the community package `@oneai-eu/n8n-nodes-oneai`. n8n's `installed_packages` row — what the
-**Community nodes** page shows — reads **`0.1.9-pr3`**, so it cannot be mistaken for the npm
-release. 🔴 The package's own `package.json` **on disk** still reads `0.1.9`: anyone who inspects the
-container instead of the UI will conclude the published release is installed. The deployed build is
-`d636473` minus one reworded resource description, verified by hashing `dist/nodes/OneAi/modes.js`
-against a local build; it does **not** include this session's documentation-pass changes (the
-`artifact:create` description, README, TODO, history), none of which alter behaviour.
+🟢 **Deployed on the bench:** `https://n8n.oneai.de` (n8n **2.37.9**) runs the published
+`@oneai-eu/n8n-nodes-oneai@0.3.0` from npm — not a local build — and `installed_packages` says
+`0.3.0`. Verified in the container: 75 operations, `usableAsTool: true`. The demo workflow
+`oneAI · v0.3.0 demo — ingestion completion loop` and its credential persist under the owner's
+account.
 
-Credential *oneAI devtest (bench, 2026-09-04)* and three demo workflows (`oneAI · 1/2/3`) are in the
-owner's personal project; the demo data is the oneData space **n8n Demo Data**, table `contacts`
-(5 rows landed by a real run, `age` a number). The owner opened and ran the demo workflows in the UI
-on 2026-09-04 and they completed without error.
-
-**Rollback / re-deploy.** Prefer **Settings → Community nodes**: uninstall the package, then install
-`@oneai-eu/n8n-nodes-oneai`, which pulls the published version and rewrites the `installed_packages`
-row at the same time. The shell equivalent, inside `oneai-devtest-n8n`, is
-`cd /home/node/.n8n/nodes && rm -rf node_modules/@oneai-eu/n8n-nodes-oneai && npm install @oneai-eu/n8n-nodes-oneai@0.1.9`
-followed by `docker restart oneai-devtest-n8n` **on the host**. 🔴 The `rm -rf` is not optional: the
-installed tree already claims `0.1.9`, so a plain `npm install …@0.1.9` is satisfied by what is there
-and silently does nothing. `docker restart` is the only container verb allowed on that host, and
-`oneai-devtest-n8n-ralf` is a colleague's.
+**Rollback.** Settings → Community nodes: uninstall, then install `@oneai-eu/n8n-nodes-oneai@0.2.0`.
+The shell equivalent inside `oneai-devtest-n8n` is
+`cd /home/node/.n8n/nodes && rm -rf node_modules/@oneai-eu/n8n-nodes-oneai && npm install @oneai-eu/n8n-nodes-oneai@0.2.0`
+followed by `docker restart oneai-devtest-n8n` on the host. The `rm -rf` is not optional.
+`docker restart` is the only container verb allowed there; `oneai-devtest-n8n-ralf` is a colleague's.
 
 ---
 
 ## ▶ Needs the owner — blocking nothing, but nobody else can rule
 
+- **OWNER-10 · The `n8n-workflow` peer floor, or a Compatibility note instead.** The security audit
+  bisected published `n8n-workflow` tarballs: on **≤ 1.98.0** (n8n ≤ 1.101.0) a thrown `NodeApiError`
+  keeps the original axios error as `cause`, so `config.headers.Authorization` is reachable in the
+  persisted execution record; on **≥ 1.99.0** (n8n ≥ 1.102.0) a class field shadows it away. We
+  declare `"n8n-workflow": "*"` and no `engines`, so we claim exactly the hosts where it leaks. The
+  run mitigated it at our own seam — the credential is stripped from a failed request before
+  `NodeApiError` sees it — and the README's **Compatibility** section now states the host-version
+  fact. What is still the owner's: whether to raise the peer floor (which drops those users) or leave
+  it at `*`. 🔴 The scrub is proven *not* load-bearing on the bench's n8n 2.37.9 — with it removed
+  the persisted record was byte-identical and still clean — and **NOT-REACHED** on an older host,
+  because none was available. It stays because `*` means we do not get to assume the newer host.
+- **OWNER-7 · A `oneAI Chat Model` sub-node.** An LLM sub-node that n8n's AI Agent could use with the
+  oneAI Gateway, rather than an action node an agent calls as a tool. Named as a separate spike when
+  the v0.3.0 scope was ruled, and deliberately not part of that run. *(no work done)*
+- **OWNER-8 · Ship the approval verdicts as AI-callable, or hold them back?**
+  🔴 `usableAsTool` **cannot hide an operation from the tool variant** —
+  `UsableAsToolDescription.replacements` is `Partial<Omit<INodeTypeBaseDescription,'usableAsTool'>>`
+  and `INodeTypeBaseDescription` has no `properties` field. So `agent:confirm` and
+  `auditLog:review` would be reachable by an LLM in one hop. **Narrowed by the owner's ruling of
+  2026-09-04:** Agent Builder is out of v0.3.0, so this now concerns **`auditLog:review` alone**. Precedent, measured: n8n's own
+  `SlackV2` is `usableAsTool: true` and exposes `archive`, `kick` and `delete`. Recommendation: ship
+  with explicit naming and a README warning — but it is the owner's call, because oneAI is a
+  compliance platform and an approval verdict is a different class of act. (Same finding is why
+  `PUT /api/compliance/llm` is rejected outright.)
 - **OWNER-2 · `main` has no branch protection and no rulesets, and five collaborators hold
   admin + push.** Publishing is triggered by *creating a GitHub release*, authenticated by OIDC
   trusted publishing — so there is **no token to revoke** and the entire control surface is who may
   create a release. A compromise of any one of the five accounts ships to npm with a valid
-  provenance attestation, which is the trust signal. Also: no `environment:` gate on the publish job.
+  provenance attestation, which is the trust signal. *Corrected 2026-09-04:* this entry also said
+  there was no `environment:` gate on the publish job. There is one now — `environment: npm-publish`,
+  requiring a review before any step runs — so a compromised account still needs an approval. The
+  branch-protection half of the item is unchanged.
 - ✅ **OWNER-6 · CLOSED — the node is findable again**, by static `resource`/`operation` options
   generated from `modes.ts`, each carrying an `action`. Session 0001, PR #2. *Carried forward:* a
   static list cannot be filtered by the credential, so a Gateway-only credential sees hub operations
@@ -62,6 +86,45 @@ and silently does nothing. `docker restart` is the only container verb allowed o
   to revisit; and n8n's injected "Custom API Call" entry is refused rather than implemented (BL-10).
 
 ## ▶ Open work
+
+### Checker gaps, every one proven by mutation
+
+Each of these was demonstrated by breaking the code and watching the gates stay green — 19 mutations
+were applied and reverted, 16 expected red and 16 actually red, and what follows is what stayed
+silent. They are filed together because they are one class: a rule that only looks where it expects
+the defect.
+
+- **BL-21 · A renamed request *body* field FAILs the drift check; a renamed *query parameter* only
+  WARNs and the run exits 0.** Measured twice (`since` → `sinceTime` on `auditLog:list`, `thumbnail`
+  → `thumb` on `chat:getBlob`): one WARN each, exit 0. `since` is where it bites — a typo ships green
+  and silently disables the filter the compliance-poll story depends on. Raising the severity is the
+  checker owner's call, and the argument for it is that n8n does not validate parameters either.
+  *(P2)*
+- **BL-23 · The drift check does not descend into nested request-body objects.** `auditLog:export`'s
+  `fields` is compared as one `object` key, so renaming a key inside it (`userId` → `user_id`)
+  produces no finding — while the endpoint declares `additionalProperties: false`, so a real server
+  rejects it. 🔴 The only thing standing between that and a shipped 400 is the local
+  `Record<AuditLogExportField, boolean>` annotation over a closed union, which makes it a compile
+  error. **That annotation is load-bearing and must not be relaxed to `Record<string, boolean>`** —
+  weakened, all five gates go green on a broken request. *(P2)*
+- **BL-24 · Two classes produce no red anywhere.** Breaking `auditLog:export`'s output constants
+  (`audit-logs.zip` → `audit-logs`, `application/zip` → `application/octet-stream`) and reinstating a
+  dead enum value in `auditLog:list`'s `origin` both leave `tsc`, lint, drift, lineage and panel at
+  exit 0. The first breaks the very next node in the workflow; the second can only ever produce a
+  400. An enum-value tier is the natural home for the second. *(P3)*
+- **BL-25 · `paired-item-check.mjs` reads helper files under `actions/` only.** The relocation
+  mutation the house rule demands is caught there now, but the same shadowing defect in a helper one
+  directory up — `nodes/OneAi/lineage.ts`, `nodes/OneAi/transport/` — leaves all five gates green.
+  Nothing does this today, so it is latent. Widening the glob to `nodes/OneAi/**` is a one-line
+  change to the checker's own scope. *(P3)*
+- **BL-20 · `panel-check.mjs` reads `modes.ts`, and hard-codes `OneAi.node.ts`.** Two consequences.
+  It does **not** move when a router arm is removed — commenting out a `case` dropped the drift check
+  to 74 while panel-check still reported 75 — so it is not a second opinion on the shipped surface,
+  and nothing should be inferred from its count alone. And a second node file (a trigger node, for
+  instance) would be invisible to it entirely, which makes this a prerequisite for any second node
+  rather than a tidy-up. *(P2)*
+
+### Everything else
 
 - **BL-19 · The five Dependabot alerts are toolchain-only, and cannot be fixed from here.**
   Assessed 2026-09-04, per advisory rather than by counting: 3 HIGH `nanoid`
@@ -88,6 +151,60 @@ and silently does nothing. `docker restart` is the only container verb allowed o
   and a real chance of breaking build or lint. **Revisit when `@n8n/node-cli` or `n8n-workflow`
   update**, not before. *(P3)*
 
+- **BL-22 · Agent Builder (`api/agent-definitions`) stays out.** Owner ruling: not finished in oneAI
+  yet. Also `POST …/runs` takes a body of `{}` with `additionalProperties: false`, so a run cannot be
+  parameterised, and shipping even `agent:list` would freeze the resource name `agent` against a
+  moving API for the life of `typeVersion: 1`. Reopen when the oneAI side settles. *(P3)*
+- **BL-26 · `space:embedFiles` drops the context its successor needs.** It emits only
+  `{ queuedCount, skippedCount }`, without the `spaceId` and `paths` it was given, so a workflow
+  cannot wire onward from it and has to re-supply both. Deferred deliberately in v0.3.0: the
+  ingestion story wires from `space:uploadFile`, which does carry them, and changing what a shipped
+  operation returns is a larger act than adding an optional input. *(P3)*
+- **BL-27 · Five older binary operations drop incoming `item.binary`.** `ai:generateSpeech`,
+  `artifact:exportPdf`, `artifact:exportPptx`, `dataset:exportCsv` and `space:downloadFile` replace
+  the item's binary map instead of adding to it, so a file carried in from upstream is lost. The two
+  binary operations added in v0.3.0 copy it forward, which is what Google Drive's download node does;
+  retrofitting the five was explicitly ruled out of that run as a behaviour change to shipped
+  operations. *(P3)*
+- 🔴 **BL-28 · The certification scanner's lint CAN be reproduced locally, and our gate set does not
+  do it.** `CLAUDE.md` says the scanner "cannot gate local code" because it downloads from npm. True
+  of the scanner — **but not of its verdict**. `npx eslint nodes/ credentials/ --no-inline-config`
+  reproduces exactly what it reports, before anything is published.
+
+  The gap it hides: **our `npm run lint` honours inline `eslint-disable` comments and the scanner
+  does not.** Two suppressions ship today —
+  `nodes/OneAi/modes.ts:240` (`node-param-default-missing`) and
+  `nodes/OneAi/v1/OneAiV1.ts:147` (`require-continue-on-fail`) — so the gate is green while the
+  scanner is ❌. Add the `--no-inline-config` run to the gate set. *(P2)*
+- 🔴 **BF-6 · `@oneai-eu/n8n-nodes-oneai@0.3.0` fails `@n8n/scan-community-package`**, and so does
+  `0.2.0` — verified against both published versions, so this is **not a regression from the
+  v0.3.0 work**. It arrived with the static `resource`/`operation` options that made the node
+  findable again.
+
+  One violation: `modes.ts:241` `n8n-nodes-base/node-param-default-missing`. 🔴 **A `default` is
+  present** at line 251 (`DEFAULT_OPERATION_PER_RESOURCE[r.value] ?? ''`) — the rule requires a
+  **literal** and cannot read a computed one. Measured, not assumed: replacing it with
+  `default: ''` clears the error; removing only the `??` does not. So the two options are a literal
+  empty default, which costs the per-resource preselected operation, or writing the eleven property
+  blocks out by hand with literal defaults, which costs `modes.ts` as the single source of truth.
+  **Owner's call; it is a trade, not a bug fix.** *(P2)*
+
+- 🔴 **BF-7 · `space:downloadFile` can still label a file `text/plain`, silently.**
+  `downloadFile.operation.ts:112` calls `prepareBinaryData(file, fileName)` with **no MIME type**,
+  and `fileName` falls back to `'download'` when the path has no basename extension
+  (line 111). `prepareBinaryData` only sniffs when no type is given and its fallback is
+  `text/plain` — so a downloaded PDF or image with an extensionless path arrives labelled as text,
+  which kills the editor preview and misleads every downstream node.
+
+  It is the **one shipped call site** that can still reach this: the other eight all pass a type
+  (`exportCsv`, `getBlob`, `editImage`, `generateImage`, `generateSpeech`, `auditLog:export`,
+  `exportPdf`, `exportPptx`). Found by the docs agent while writing the rule that forbids it,
+  which is the right way round.
+
+  Ships in `0.3.0`. **Minimal fix:** keep deriving the type from the filename when it has an
+  extension — that behaviour is correct — and pass `application/octet-stream` only when it does
+  not. Needs a release to reach anyone, so it belongs with the next one rather than alone. *(P2)*
+
 - **BL-18 · Install scripts still run in the publish job.** Five of the locked packages execute at
   install time (`cpu-features`, `isolated-vm`, `ssh2`, `unrs-resolver`, and
   `eslint-plugin-n8n-nodes-base`, whose `preinstall` fetches from the registry), and `dist/` is
@@ -96,24 +213,41 @@ and silently does nothing. `docker restart` is the only container verb allowed o
 - **BL-1 · A response tier for `drift-check`.** It compares requests only. Two real defects lived in
   the response side (`artifact:exportPdf`, `space:downloadFile`) and no tier could see either. The
   by-hand sweep that found them — compare each call's declared `200` content type against its
-  transport helper — is the shape of the check. A spot check of all five binary operations passed at
-  `0.2.0`, by hand again. *(P2)*
+  transport helper — is the shape of the check. Swept by hand again for v0.3.0: **90 of 90 calls,
+  0 mismatches**, and the script that did it had to be taught a *fourth* transport helper
+  (`oneAiApiRequestBinary`, 3 calls) before it was complete — which is itself the argument for
+  making it a tier instead of rewriting it every run. *(P2)*
 - **BL-2 · Trace the six untraced dataset operations** — `updateSchema`, `importCsv`, `exportCsv`,
   `update`, `delete`, and the `defineBelow`/`json` data modes — plus `continueOnFail` on both the
   item loop and the `appendMany` arm. *(P2)*
 - **BL-4 · Generate types from `openapi/openapi.json`,** the way the platform generates
   `src/openapi.gen.ts`. Until then "follow the spec's types" is a habit a reviewer must police
   rather than something the compiler enforces. *(P2)*
-- **BL-5 · A dataset trigger.** Named by the architect as the highest-value follow-up, and blocked:
-  the API gives a poller no cursor. Needs an API-side change. *(P3)*
-- **BL-9 · Gateway-plan behaviour is unproven.** Both key classes were exercised, but the `oai-gk_`
-  key was minted against a `team`-plan org, so prefix routing is proven and `plan-gate` behaviour is
-  not. Needs a genuine Gateway-plan org on devtest. *(P3)*
-- **BL-10 · Implement "Custom API Call" instead of refusing it.** n8n injects the option for any
-  node with static options and a credential; we answer with a clear refusal. Ruled out for `0.2.0`
-  on evidence: no node in `nodes-base` carries the `__CUSTOM_API_CALL__` sentinel, n8n's own
-  tooling filters it out, and it is a feature of the *declarative* node style, which this node is
-  not. Reopen only with a shape that has precedent. *(P3)*
+- **BL-5 · A trigger node — and the reason it cannot be a webhook trigger.** Named by an earlier
+  architect run as the highest-value follow-up for datasets, and blocked there because the API gives
+  a poller no cursor. The 2026-09-04 pre-analysis generalises that finding across the whole API:
+  🔴 **all 11 `api/webhooks` endpoints are receivers** — every `summary` begins with "Receive", the
+  OpenAPI 3.1 top-level `webhooks` object is absent, and **0 of 401 operations carry a `callbacks`
+  object**. No endpoint registers a URL for oneAI to call, so n8n's `webhookMethods` shape has
+  nothing to attach to. A **polling** trigger stays possible; `GET /api/audit/logs` is the only
+  pollable event with a server-side cursor, and its `since` is *"clamped to the plan's retention
+  window"*, so a long-stopped workflow loses events rather than catching up. Prerequisite either
+  way: BL-20. See `docs/ANALYSIS-2026-09-04-v0.3.0-candidates.md`. *(P3)*
+- **BL-9 · Gateway-plan behaviour is unproven.** Both key classes were exercised again in v0.3.0 —
+  `oai_` against `/api/auth/check` and `oai-gk_` against `/api/openai/v1/models`, both 200, and the
+  gateway key drove a real AI Agent through an OpenAI-compatible chat model — but the devtest org's
+  plan is `team`, so the `oai-gk_` key was minted with that prefix directly. Prefix **routing** is
+  proven; genuine Gateway-plan **gating** still needs a Gateway-plan org on devtest. *(P3)*
+- 🔴 **BL-10 · Implement "Custom API Call" instead of refusing it. Raised from P3 to P1 on
+  evidence.** The reason it was P3 was that nobody used it. Somebody does: the owner's own workflow
+  *"🌅 Morgen-Briefing – Emails + weclapp Angebote → KI-Aufgabenplan → Teams"* on the bench contains
+  a oneAI node whose operation is `__CUSTOM_API_CALL__` — n8n's injected entry, which this node
+  **refuses at runtime**. That workflow cannot run as saved. Found by reading what people actually
+  built; no checker in this repository could have found it, and none can regress-test it either.
+  The `0.2.0` reasoning against it still stands on its own terms (no node in `nodes-base` carries
+  the sentinel, n8n's own tooling filters it out, and it is a feature of the *declarative* node
+  style, which this node is not) — so the shape needs deciding, but "unused" is no longer an
+  argument. *(P1)*
 - **BL-12 · `paired-item-check.mjs` flags `pairedItem` in a type annotation** as `[R6] names
   'number', which nothing in this file binds`. It fails closed, so it is safe — but it would block a
   legitimate refactor that types the emitted row shape. *(P3)*
@@ -128,7 +262,9 @@ and silently does nothing. `docker restart` is the only container verb allowed o
   correctness was proven by a throwaway script that parses `modes.ts` and the README and asserts
   equal resources, counts, names, descriptions and order — four mutations reddened it. That script
   belongs in `scripts/`, because a README that documents 57 operations while the node ships 62 is
-  the defect that blocked this release and no gate could see it. *(P2)*
+  the defect that blocked that release and no gate could see it. **Written and thrown away a second
+  time** for v0.3.0 — 11 headings, 75 rows, names and descriptions verbatim, all clean — which is two
+  runs in a row of rebuilding the same check by hand. *(P2)*
 - **BL-16 · Say the secret-handling facts in the node, not only in the README.**
   `Space > Create`'s **Provider Options (JSON)** cannot carry `password: true` (n8n honours it on
   `string` only), so a provider key pasted there is visible on screen, in an export and in every
@@ -139,6 +275,38 @@ and silently does nothing. `docker restart` is the only container verb allowed o
 
 ## ▶ For the oneAI API owners — not ours to fix
 
+- 🔴 **BF-4 · `POST /api/audit/logs/export` returns HTTP 500 for every caller.** The hub answers
+  `{"errorMessage":"Internal Server Error."}` and logs
+  `PostgresError: column reference "org_id" is ambiguous` (SQLSTATE **42702**). The cause is visible
+  in oneAI's own source: `src/api/audit/export.ts` runs
+  `FROM audit_logs al JOIN users u ON al.user_id = u.id ${filterClause}`, while
+  `buildAuditLogFilters` at **`src/api/util/audit.ts:1356`** emits an **unqualified**
+  `` WHERE org_id = ${orgId} ``, so the predicate is ambiguous whatever the request body says —
+  reproduced with `csv` and `json`, with and without `from`, with and without `origin`.
+  `/api/audit/logs` (list) runs `FROM audit_logs` with **no join** and is unaffected. **This is
+  broken for everyone, not only for this node**, and it is why our `auditLog:export` — verified
+  correct against the spec, and proven to produce an archive the Compression node opens when the
+  endpoint answers — has never been traced end to end.
+
+  *Corrected 2026-09-05.* The trace report first cited `audit.ts:1101`; that line is the TypeScript
+  field `lastNameLength?: number`, not SQL. Re-derived from a clean checkout of `origin/main` at
+  `45819b7d`: the builder is at 1348-1382 and the offending line is **1356**.
+
+  🔴 **It is not a one-line fix, which is what the earlier wording implied.** Column overlap read
+  from the live devtest database rather than from the source: `audit_logs` has
+  `id, org_id, user_id, origin, created_at, data`; `users` has `id, org_id, email`. **`org_id` is
+  the only ambiguous one** — `user_id`, `origin` and `created_at` exist on `audit_logs` alone, so
+  the builder's other three predicates are safe today. But `buildAuditLogFilters` is shared by both
+  callers, and they alias differently: `list.ts:176` selects `FROM audit_logs` with no alias, so
+  writing `al.org_id` into the builder **breaks list instead**. The fix is to give `list.ts` the
+  same `al` alias and qualify every predicate in the builder, or to pass the alias in — and the
+  reason to qualify all four rather than only `org_id` is that the next join added to either caller
+  brings the same class of failure back.
+- **BF-5 · `thumbnail: true` is a no-op on chat blobs.** `GET /api/chats/{chatId}/blobs/{blobId}`
+  and the blob-URL endpoint both accept it, and the full and thumbnail responses came back
+  **byte-identical** (19 758 B) on the devtest build — confirmed by calling the API directly, without
+  the node, so it is server-side. The parameter is exercised by the node but its effect is
+  unobservable, which means nobody can tell a working thumbnail from a silently ignored one.
 - **BF-1 · `GET /api/spaces/{spaceId}/files/download` returns HTTP 500 for a missing file**, not
   404, with `{"status":500,"errorMessage":"Internal Server Error."}`. A missing file is a client
   error, and a 500 reads as an outage to anyone monitoring it.
@@ -150,6 +318,11 @@ and silently does nothing. `docker restart` is the only container verb allowed o
 
 ## ▶ Closed
 
+- ✅ **OWNER-9 · The v0.3.0 scope, ruled by the owner and delivered.** Three loops closed —
+  file ingestion, chat artefacts, compliance review — as `space` +4, `chat` +5 and `auditLog` +2.
+  Eleven operations shipped where ten were ruled: `space:renameFile` was added under the one scope
+  question left open, and the live trace then confirmed it was not redundant. Session 0005.
+  *Carried forward:* BL-20 … BL-27 and BF-4 / BF-5, all opened by that run.
 - ✅ **OWNER-5 · The publish path is reproducible.** `package-lock.json` is committed and CI runs
   `npm ci`; the actions are pinned to commit SHAs; `npm install -g npm@latest` is gone. 🔴 **Not
   closed by this:** five of the locked packages still execute install scripts, and `dist/` is still
@@ -177,6 +350,16 @@ and silently does nothing. `docker restart` is the only container verb allowed o
 - ✅ **BL-11 · `panel-check` now counts operations a second way** and compares, so removing an
   `action` key is a finding rather than a silently smaller number. Session 0002.
 - ✅ **BL-17 · The bench runs the published `0.2.0`** from npm, and `installed_packages` says so.
+  *Superseded 2026-09-04 night:* the bench now runs the v0.3.0 branch as `0.2.0-bench.45ab7ff`, a
+  marker that cannot exist on npm — see the frontier for the rollback.
+- ✅ **`auditLog:list` under-delivered at its own default, silently.** The endpoint caps a page at 30
+  and clamps rather than rejecting, so asking for 50 returned 30 and said nothing — shipped in
+  `0.2.0`, found by running it, fixed in the v0.3.0 branch by paging until the limit is satisfied.
+  The cap lives in the spec as prose and not as a schema `maximum`, so no drift tier could see it.
+  Session 0004.
+- ✅ **The credential could reach the persisted execution record on older hosts.** Stripped at our own
+  seam now, for all four transport helpers. What that does **not** close is the peer-floor question —
+  **OWNER-10**. Session 0004.
 
 - ✅ **The README documented 57 operations, omitted five that ship, and denied two of them in
   prose** — the release blocker. Regenerated from `modes.ts` and verified mechanically.

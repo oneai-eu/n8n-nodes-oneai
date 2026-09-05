@@ -34,6 +34,35 @@ settles `auth`, `passkeys`, `subscription`/Stripe and `scim` without discussion.
 
 You may propose additions to the "in" list. You may not overrule the "out" list.
 
+## 🔴 Two doors that are closed, with the measurement that closed them
+
+Both were re-derived from scratch at least once. Cite these rather than re-opening them, and if you
+believe one has changed, say what observation would show it.
+
+**A webhook trigger node is impossible.** All twelve `api/webhooks` endpoints are *receivers* —
+every `summary` begins with "Receive" — the OpenAPI 3.1 top-level `webhooks` object is absent, and
+**0 of 406 operations carry a `callbacks` object**. Nothing lets a workflow register a URL for oneAI
+to call, so n8n's `webhookMethods` shape has nothing to attach to.
+
+A **polling** trigger stays possible, and `GET /api/audit/logs` is the only pollable event with a
+server-side cursor. Two facts shape any proposal for it: its `since` is **exclusive** (`>`, traced
+live, despite the spec's "at or after" — which is right for a poll, each log read once), and it
+**silently clamps `pageSize` to 30**, so a promised limit has to be kept by paging rather than by the
+field. 🔴 A polling trigger is a **second node file**, and `panel-check.mjs` hard-codes
+`OneAi.node.ts` / `OneAi.node.json`; teaching it to walk `package.json`'s `n8n.nodes` is therefore a
+**prerequisite** of that proposal, not a follow-up (`TODO.md` BL-20).
+
+**`usableAsTool` cannot hide an operation from the tool variant.**
+`UsableAsToolDescription.replacements` is `Partial<Omit<INodeTypeBaseDescription, 'usableAsTool'>>`
+and `INodeTypeBaseDescription` has **no `properties` field**, so it is all-or-nothing per node. Every
+operation you propose — including an approval verdict like `auditLog:review` — becomes reachable by a
+model in one hop. That is not a reason to refuse one; n8n's own `SlackV2` is `usableAsTool: true` and
+exposes `archive`, `kick` and `delete`. It is a reason to treat the **`action` string as the design
+surface**: it is literally what a model reads when choosing, so name a state-changing operation for
+what it changes. Placement, since we are a `VersionedNodeType`: `usableAsTool` belongs on the
+**version** description (`v1/OneAiV1.ts`), not the base — `Slack.node.ts` carries none and `SlackV2`
+carries it, and Slack is enumerated as a tool.
+
 ## Method
 
 1. **Start from the drift report** (`node scripts/drift-check.mjs`), never from a file listing. 29
@@ -45,9 +74,10 @@ You may propose additions to the "in" list. You may not overrule the "out" list.
 3. **Group by the workflow, not by the API.** A resource is a thing a workflow author thinks about,
    which is often not how the REST surface is organised.
 4. **Design the parameters** from the spec's types. Where a value is an id the author cannot know,
-   say whether it needs a `loadOptions` picker — and note that 0.1.9 already moved `resource` and
-   `operation` themselves to `loadOptions`, whose effect on nodes-panel discoverability is **an open
-   question** (research U-7). Do not deepen that pattern before it is answered.
+   say whether it needs a `loadOptions` picker — but 🔴 **never for `resource` or `operation`.**
+   Research question U-7 is answered, live: `0.1.9` moved those two to `loadOptions` and the node
+   produced zero actions and vanished from the panel, because n8n's node creator is action-first and
+   reads the **static** `options` arrays. The pattern is reverted and `panel-check.mjs` R1 guards it.
 
 ## Output
 
