@@ -10,6 +10,62 @@
 
 ---
 
+## Session 0006 — The release, and the guard that broke the thing it was hardening (2026-09-05)
+
+**`0.3.0` is on npm.** Both pull requests merged, version set, release cut, published with
+provenance, and the bench moved onto the published package. Verified against the registry rather
+than the CI log: shasum `87b184c4…` matches, 302 files, SLSA attestation attached, zero runtime
+dependencies.
+
+**The lesson of this session is not the release. It is that the previous session's hardening broke
+publishing, and nothing could have told us.**
+
+`ffa3d8a "Make the publish path reproducible"` removed `npm install -g npm@latest` on sound
+reasoning: an unpinned CLI builds the artefact, and `CLAUDE.md` lists exactly that as a weakness of
+this path. What it missed is that the step was **load-bearing** — npm's OIDC trusted publishing
+requires CLI **>= 11.5.1** and Node 22 bundles npm 10, so without it npm falls back to token auth,
+finds none by design, and the registry answers `404 Not Found` on `PUT` rather than an honest 403.
+The error names the package, not the credential, which is why it reads like a missing package.
+
+🔴 **No release ran between the change and this one. The first exercise of the hardened path was the
+release it broke.** A change to a path that is only travelled at release time cannot be validated by
+any gate that runs at commit time — and this repository has no test that publishes.
+
+Fixed by pinning `npm@12.0.2` (PR #13), which keeps both properties: new enough for OIDC, and the
+CLI decided in the file rather than in the minute the job runs. The comment now says what the step
+is *for*, because its predecessor looked like tidy-up and was removed as such.
+
+**A provenance statement was signed and written to the sigstore transparency log before the failing
+PUT**, so a public attestation exists for a version that was never published. Harmless, and worth
+knowing before someone finds it and reads it as evidence of a pulled release.
+
+**Overturned, with evidence:** `CLAUDE.md` says `@n8n/scan-community-package` "cannot gate local
+code" because it downloads from npm. True of the scanner, **false of its verdict** —
+`npx eslint nodes/ credentials/ --no-inline-config` reproduces exactly what it reports. That matters
+because our `npm run lint` honours inline `eslint-disable` comments and the scanner does not, so the
+gate can be green while the scanner is ❌. It is: **both `0.3.0` and `0.2.0` fail it**, on a single
+`node-param-default-missing` in `modes.ts`. Not a regression from this work — it arrived with the
+static options that made the node findable — and the fix is a trade rather than a repair, so it is
+the owner's (BF-6, BL-28).
+
+**A guard fired three times on prose, not on actions.** The bash hook matches command *text*, so a
+commit message containing "npm version", a `grep` pattern containing it, and an edit to the workflow
+file that contains "npm publish" were all refused. One of those refusals silently swallowed a
+`git checkout -b` in the same command, and the next commit landed on local `main` instead of a
+branch — caught before any push, moved onto a branch, `main` reset to `origin/main`. The guard is
+right to be blunt, but a rule that cannot distinguish running a command from writing about it will
+keep costing turns (recorded for the hook's own backlog).
+
+**Owner decisions this session:** ship `auditLog:export` despite the platform 500, documented rather
+than withheld; take the release all the way to npm; and approve the deployment gate, which the owner
+directed explicitly after I declined to self-approve. The gate itself worked as designed — it
+stopped the run and waited.
+
+**Not reached:** the nodes panel on `n8n.oneai.de` in a browser (no sign-in available to the run);
+`auditLog:export` end to end, still blocked by oneAI's ambiguous `org_id` (BF-4).
+
+---
+
 ## Session 0005 — Three loops closed: file ingestion, chat artefacts, compliance review (2026-09-04)
 
 **Package version:** `0.2.0`, unchanged. npm `latest` is `0.2.0`. 🔴 The bump to `0.3.0` is the
