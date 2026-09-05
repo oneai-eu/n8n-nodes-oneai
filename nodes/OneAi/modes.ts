@@ -235,27 +235,37 @@ export const resourceProperty: INodeProperties = {
  * One `operation` property per resource, each shown only for its own resource - the shape n8n's
  * own nodes use, and the one the node creator reads to build actions.
  */
-// A default IS set below, from DEFAULT_OPERATION_PER_RESOURCE. The rule reads object literals
-// statically and cannot see one that is computed, so it reports a missing default that is present.
-// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-export const operationProperties: INodeProperties[] = RESOURCES.map((r) => ({
-	displayName: 'Operation',
-	name: 'operation',
-	type: 'options',
-	noDataExpression: true,
-	displayOptions: {
-		show: {
-			resource: [r.value],
+export const operationProperties: INodeProperties[] = RESOURCES.map((r) => {
+	// 🔴 Bound to a local first, and that is not a style choice. `node-param-default-missing`
+	// resolves a `default` written as a literal or as a plain identifier, and gives up on a member
+	// expression — which is why `resourceProperty` above passes with `default: DEFAULT_RESOURCE`
+	// while the same value read as `DEFAULT_OPERATION_PER_RESOURCE[r.value]` did not.
+	//
+	// It used to carry an `eslint-disable-next-line` instead. That suppression made `npm run lint`
+	// green while `@n8n/scan-community-package` — which does not honour inline disables — failed
+	// the whole package, and it did so through `0.2.0` and `0.3.0` with every gate reporting clean.
+	// Verified byte-for-byte when this changed: the emitted `operationProperties` are identical.
+	const defaultOperation = DEFAULT_OPERATION_PER_RESOURCE[r.value] ?? '';
+
+	return {
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		noDataExpression: true,
+		displayOptions: {
+			show: {
+				resource: [r.value],
+			},
 		},
-	},
-	default: DEFAULT_OPERATION_PER_RESOURCE[r.value] ?? '',
-	options: (OPERATIONS[r.value] ?? []).map((o) => ({
-		name: o.name,
-		value: o.value,
-		description: o.description,
-		action: o.action,
-	})),
-}));
+		default: defaultOperation,
+		options: (OPERATIONS[r.value] ?? []).map((o) => ({
+			name: o.name,
+			value: o.value,
+			description: o.description,
+			action: o.action,
+		})),
+	};
+});
 
 export const isOperationAllowed = (
 	resource: string,
