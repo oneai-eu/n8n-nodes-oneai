@@ -132,11 +132,17 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 				case 'auditLog':
 					switch (operation) {
+						case 'export':
+							responseData = await auditLog.export.execute.call(this, i);
+							break;
 						case 'get':
 							responseData = await auditLog.get.execute.call(this, i);
 							break;
 						case 'list':
 							responseData = await auditLog.list.execute.call(this, i);
+							break;
+						case 'review':
+							responseData = await auditLog.review.execute.call(this, i);
 							break;
 						default:
 							throw new NodeOperationError(
@@ -155,11 +161,26 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						case 'delete':
 							responseData = await chat.delete.execute.call(this, i);
 							break;
+						case 'export':
+							responseData = await chat.export.execute.call(this, i);
+							break;
 						case 'get':
 							responseData = await chat.get.execute.call(this, i);
 							break;
+						case 'getBlob':
+							responseData = await chat.getBlob.execute.call(this, i);
+							break;
+						case 'getBlobUrl':
+							responseData = await chat.getBlobUrl.execute.call(this, i);
+							break;
 						case 'list':
 							responseData = await chat.list.execute.call(this, i);
+							break;
+						case 'rateMessage':
+							responseData = await chat.rateMessage.execute.call(this, i);
+							break;
+						case 'saveBlobToSpace':
+							responseData = await chat.saveBlobToSpace.execute.call(this, i);
 							break;
 						case 'update':
 							responseData = await chat.update.execute.call(this, i);
@@ -359,11 +380,20 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						case 'get':
 							responseData = await space.get.execute.call(this, i);
 							break;
+						case 'getExtractedText':
+							responseData = await space.getExtractedText.execute.call(this, i);
+							break;
+						case 'getFileStats':
+							responseData = await space.getFileStats.execute.call(this, i);
+							break;
 						case 'list':
 							responseData = await space.list.execute.call(this, i);
 							break;
 						case 'listFiles':
 							responseData = await space.listFiles.execute.call(this, i);
+							break;
+						case 'listFolder':
+							responseData = await space.listFolder.execute.call(this, i);
 							break;
 						case 'listTeams':
 							responseData = await space.listTeams.execute.call(this, i);
@@ -376,6 +406,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 							break;
 						case 'removeUser':
 							responseData = await space.removeUser.execute.call(this, i);
+							break;
+						case 'renameFile':
+							responseData = await space.renameFile.execute.call(this, i);
 							break;
 						case 'sync':
 							responseData = await space.sync.execute.call(this, i);
