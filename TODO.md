@@ -235,14 +235,28 @@ the defect.
   `PostgresError: column reference "org_id" is ambiguous` (SQLSTATE **42702**). The cause is visible
   in oneAI's own source: `src/api/audit/export.ts` runs
   `FROM audit_logs al JOIN users u ON al.user_id = u.id ${filterClause}`, while
-  `buildAuditLogFilters` at `src/api/util/audit.ts:1101` emits an **unqualified**
-  `` WHERE org_id = ${orgId} ``. Both tables have `org_id`, so the predicate is ambiguous whatever
-  the request body says — reproduced with `csv` and `json`, with and without `from`, with and
-  without `origin`. `/api/audit/logs` (list) does not join `users` and is unaffected. **This is
+  `buildAuditLogFilters` at **`src/api/util/audit.ts:1356`** emits an **unqualified**
+  `` WHERE org_id = ${orgId} ``, so the predicate is ambiguous whatever the request body says —
+  reproduced with `csv` and `json`, with and without `from`, with and without `origin`.
+  `/api/audit/logs` (list) runs `FROM audit_logs` with **no join** and is unaffected. **This is
   broken for everyone, not only for this node**, and it is why our `auditLog:export` — verified
   correct against the spec, and proven to produce an archive the Compression node opens when the
-  endpoint answers — has never been traced end to end. Fixing it is a one-line qualification of the
-  column.
+  endpoint answers — has never been traced end to end.
+
+  *Corrected 2026-09-05.* The trace report first cited `audit.ts:1101`; that line is the TypeScript
+  field `lastNameLength?: number`, not SQL. Re-derived from a clean checkout of `origin/main` at
+  `45819b7d`: the builder is at 1348-1382 and the offending line is **1356**.
+
+  🔴 **It is not a one-line fix, which is what the earlier wording implied.** Column overlap read
+  from the live devtest database rather than from the source: `audit_logs` has
+  `id, org_id, user_id, origin, created_at, data`; `users` has `id, org_id, email`. **`org_id` is
+  the only ambiguous one** — `user_id`, `origin` and `created_at` exist on `audit_logs` alone, so
+  the builder's other three predicates are safe today. But `buildAuditLogFilters` is shared by both
+  callers, and they alias differently: `list.ts:176` selects `FROM audit_logs` with no alias, so
+  writing `al.org_id` into the builder **breaks list instead**. The fix is to give `list.ts` the
+  same `al` alias and qualify every predicate in the builder, or to pass the alias in — and the
+  reason to qualify all four rather than only `org_id` is that the next join added to either caller
+  brings the same class of failure back.
 - **BF-5 · `thumbnail: true` is a no-op on chat blobs.** `GET /api/chats/{chatId}/blobs/{blobId}`
   and the blob-URL endpoint both accept it, and the full and thumbnail responses came back
   **byte-identical** (19 758 B) on the devtest build — confirmed by calling the API directly, without
