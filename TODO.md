@@ -189,21 +189,17 @@ the defect.
   blocks out by hand with literal defaults, which costs `modes.ts` as the single source of truth.
   **Owner's call; it is a trade, not a bug fix.** *(P2)*
 
-- 🔴 **BF-7 · `space:downloadFile` can still label a file `text/plain`, silently.**
-  `downloadFile.operation.ts:112` calls `prepareBinaryData(file, fileName)` with **no MIME type**,
-  and `fileName` falls back to `'download'` when the path has no basename extension
-  (line 111). `prepareBinaryData` only sniffs when no type is given and its fallback is
-  `text/plain` — so a downloaded PDF or image with an extensionless path arrives labelled as text,
-  which kills the editor preview and misleads every downstream node.
-
-  It is the **one shipped call site** that can still reach this: the other eight all pass a type
-  (`exportCsv`, `getBlob`, `editImage`, `generateImage`, `generateSpeech`, `auditLog:export`,
-  `exportPdf`, `exportPptx`). Found by the docs agent while writing the rule that forbids it,
-  which is the right way round.
-
-  Ships in `0.3.0`. **Minimal fix:** keep deriving the type from the filename when it has an
-  extension — that behaviour is correct — and pass `application/octet-stream` only when it does
-  not. Needs a release to reach anyone, so it belongs with the next one rather than alone. *(P2)*
+- ✅ **BF-7 · CLOSED — `space:downloadFile` can no longer label a file `text/plain`.** It was the
+  one shipped call site passing no MIME type to `prepareBinaryData`, whose sniffing fallback is
+  `text/plain`. Fixed in `0.3.1`. 🔴 **The fix is wider than the finding was:** `convert` changes
+  the format the server sends ("DOCX to PDF, XLSX to ZIP of CSVs"), so with it on the source path's
+  extension describes bytes that never arrived — deriving from it would have produced a *confident
+  wrong* label rather than a vague one, which is worse than the defect. The type is now derived from
+  the extension only when there is one **and** nothing was converted; both other cases send
+  `application/octet-stream`. All nine call sites re-swept with a brace-matching parser: the other
+  eight already passed a type. *Carried forward:* no checker asserts this property — a naive "every
+  `prepareBinaryData` takes three arguments" rule would wrongly flag the deliberate two-argument
+  branch, so it needs the guard encoded, which is BL-shaped work nobody has done.
 
 - **BL-18 · Install scripts still run in the publish job.** Five of the locked packages execute at
   install time (`cpu-features`, `isolated-vm`, `ssh2`, `unrs-resolver`, and
