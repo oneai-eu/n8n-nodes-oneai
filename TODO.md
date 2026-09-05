@@ -55,6 +55,33 @@ and silently does nothing. `docker restart` is the only container verb allowed o
   trusted publishing — so there is **no token to revoke** and the entire control surface is who may
   create a release. A compromise of any one of the five accounts ships to npm with a valid
   provenance attestation, which is the trust signal. Also: no `environment:` gate on the publish job.
+- **OWNER-9 · CLOSED — v0.3.0 scope ruled by the owner, 2026-09-04.** **Block 1 + Block 3 only.**
+  Agent Builder (`api/agent-definitions`) is **deferred: the feature is not finished in oneAI yet**,
+  and shipping against it would have been premature. 🔴 Second reason, which makes the ruling the
+  safer one either way: a `typeVersion: 1` operation must stay in the `nodeVersions` map for the
+  life of the package, so `agent:list` would have **frozen the resource name `agent` and its
+  operation names against an API still in motion** — and a later rename of a parameter breaks
+  workflows *silently*. Deferred to BL-22.
+
+- **OWNER-7 · Does v0.3.0 trade away the package's zero-dependency property?** An
+  `oneAI Chat Model` sub-node (~150 lines) would make **every AI Agent, LLM Chain and Information
+  Extractor in n8n** run on oneAI — nothing else proposed comes close in reach.
+  `POST /api/openai/v1/responses` exists and accepts `tools`/`tool_choice`/`stream`, so LangChain's
+  `ChatOpenAIResponses` targets it on paper. Cost: **the first runtime dependencies in a
+  zero-dependency package**, which is currently the property that makes the non-reproducible publish
+  path (BL-18) tolerable. Recommendation: settle feasibility with a spike — one live tool-calling
+  round trip — before the trade is even on the table. 🔴 Note `additionalProperties: false` and
+  `previous_response_id` absent: the model must send full history every turn.
+- **OWNER-8 · Ship the approval verdicts as AI-callable, or hold them back?**
+  🔴 `usableAsTool` **cannot hide an operation from the tool variant** —
+  `UsableAsToolDescription.replacements` is `Partial<Omit<INodeTypeBaseDescription,'usableAsTool'>>`
+  and `INodeTypeBaseDescription` has no `properties` field. So `agent:confirm` and
+  `auditLog:review` would be reachable by an LLM in one hop. **Narrowed by the owner's ruling of
+  2026-09-04:** Agent Builder is out of v0.3.0, so this now concerns **`auditLog:review` alone**. Precedent, measured: n8n's own
+  `SlackV2` is `usableAsTool: true` and exposes `archive`, `kick` and `delete`. Recommendation: ship
+  with explicit naming and a README warning — but it is the owner's call, because oneAI is a
+  compliance platform and an approval verdict is a different class of act. (Same finding is why
+  `PUT /api/compliance/llm` is rejected outright.)
 - ✅ **OWNER-6 · CLOSED — the node is findable again**, by static `resource`/`operation` options
   generated from `modes.ts`, each carrying an `action`. Session 0001, PR #2. *Carried forward:* a
   static list cannot be filtered by the credential, so a Gateway-only credential sees hub operations
@@ -79,8 +106,37 @@ and silently does nothing. `docker restart` is the only container verb allowed o
 - **BL-4 · Generate types from `openapi/openapi.json`,** the way the platform generates
   `src/openapi.gen.ts`. Until then "follow the spec's types" is a habit a reviewer must police
   rather than something the compiler enforces. *(P2)*
-- **BL-5 · A dataset trigger.** Named by the architect as the highest-value follow-up, and blocked:
-  the API gives a poller no cursor. Needs an API-side change. *(P3)*
+- **BL-5 · A trigger node — and the reason it cannot be a webhook trigger.** Named by an earlier
+  architect run as the highest-value follow-up for datasets, and blocked there because the API gives
+  a poller no cursor. The 2026-09-04 pre-analysis generalises that finding across the whole API:
+  🔴 **all 11 `api/webhooks` endpoints are receivers** — every `summary` begins with "Receive", the
+  OpenAPI 3.1 top-level `webhooks` object is absent, and **0 of 401 operations carry a `callbacks`
+  object**. No endpoint registers a URL for oneAI to call, so n8n's `webhookMethods` shape has
+  nothing to attach to. A **polling** trigger stays possible; `GET /api/audit/logs` is the only
+  pollable event with a server-side cursor, and its `since` is *"clamped to the plan's retention
+  window"*, so a long-stopped workflow loses events rather than catching up. Prerequisite either
+  way: BL-20. See `docs/ANALYSIS-2026-09-04-v0.3.0-candidates.md`. *(P3)*
+- **BL-20 · `panel-check.mjs` cannot see a second node file.** It hard-codes `OneAi.node.ts` and
+  `OneAi.node.json` (lines 54-55), so a trigger node or a chat-model sub-node would be **invisible
+  to the checker whose entire purpose is keeping this node findable**. Walk `package.json`'s
+  `n8n.nodes` array instead. This comes **before** any second node, not after. *(P2)*
+- **BL-21 · Two loops shipped in `0.2.0` are half open.** `space:uploadFile`, `space:embedFiles` and
+  `space:sync` have **no completion signal** — `GET …/files/stats` is not shipped, so "upload, then
+  chat against it" is a race the author can only lose by guessing a Wait duration. And
+  `ai:createResponse` can generate an image blob that **no shipped operation can fetch**;
+  `chat:get` is the discovery path (`blobId` appears twice there and 0 times in the
+  `/api/chats/{chatId}/http` response). A user meets both as bugs, not as missing features. First
+  candidate block for v0.3.0. *(P2)*
+
+- **BL-22 · Agent Builder (`api/agent-definitions`), deferred from v0.3.0.** 16 endpoints; ~7 were
+  proposed (`list`, `get`, `run`, `getRun`, `listRuns`, `listPending`, `confirm`). Deferred by the
+  owner because the feature is not finished in oneAI. **Revisit when the platform side settles** —
+  and re-take the spec snapshot first, because the shapes are expected to move. Known constraint to
+  carry forward: `POST …/runs` has body `{}` with `additionalProperties: false`, so **a run cannot
+  be parameterised**. Consequence left standing meanwhile: `chat:create` / `chat:update` ship an
+  `agentId` parameter with **no operation that yields an ID** — handled for now by saying in the
+  parameter description where to find one, not by shipping a premature operation. *(P2)*
+
 - **BL-9 · Gateway-plan behaviour is unproven.** Both key classes were exercised, but the `oai-gk_`
   key was minted against a `team`-plan org, so prefix routing is proven and `plan-gate` behaviour is
   not. Needs a genuine Gateway-plan org on devtest. *(P3)*
