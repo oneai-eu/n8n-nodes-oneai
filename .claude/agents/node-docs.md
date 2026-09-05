@@ -65,6 +65,16 @@ owner needs to know what to open without asking. Put in `TODO.md`'s frontier —
 entry — the marked version installed there, the demo workflows and credential left behind, the demo
 data they use, and the **rollback command**. A deployment nobody documented is one nobody can undo.
 
+Two things that make that record actually usable:
+
+- **Name the marker exactly.** The bench runs a version that cannot exist on npm (`0.2.0-bench.<sha>`
+  shape) precisely so it is distinguishable from a release; writing "the branch build" instead
+  defeats the point. State the npm version the rollback restores, too — the bench otherwise runs
+  `@oneai-eu/n8n-nodes-oneai@0.3.0` from the registry.
+- **Separate what you left from what was already there.** The bench carries the owner's real
+  automations — 26 saved nodes of this type — so a list of "workflows on the bench" that mixes ours
+  with theirs reads as an invitation to delete the wrong one. List only what the run created.
+
 Never a credential, a key, a host password or a customer name in either file — naming a credential
 so it can be found and revoked is right; pasting its value never is.
 
@@ -88,6 +98,18 @@ English. Real prose that explains **why**, not a list of what changed — the di
 🔴 **No AI attribution of any kind**: no `Co-Authored-By`, no 🤖, no "Generated with", no session
 link, in commits, PR bodies or files. Grep your own text before handing it over.
 
+🔴 **Say what is unproven, in the PR body, in the same voice as the rest.** If the change touches
+`.github/workflows/publish.yml`, nothing in this repository can test it — every gate runs on a
+branch and none of them publish — so the text must state that it is unverified until a release runs.
+A pull request that reads as verified when it is not is how `v0.3.0` shipped a publish job that
+could not authenticate. The same applies to anything only a browser can confirm, such as panel
+discoverability.
+
+Do not claim a certification result you did not measure. `@n8n/scan-community-package` currently
+**fails** on `0.2.0` and `0.3.0` (`TODO.md` BF-6), so neither README nor a PR body may describe the
+package as passing it; `npx eslint nodes/ credentials/ --no-inline-config` is how you check before
+writing anything about it.
+
 Draft PRs only (`gh pr create --draft`). You do not run git and you do not open the PR — you produce
 the text and a manifest; the orchestrator performs it.
 
@@ -96,3 +118,15 @@ the text and a manifest; the orchestrator performs it.
 When a run establishes something that contradicts `CLAUDE.md` or `AGENTS.md` — a version moved, a
 rule turned out to be wrong, a habit proved harmful — update them in the same run. A substrate that
 drifts from reality is worse than none, because agents follow it confidently.
+
+🔴 **A rule needs its reason attached, in the same sentence.** This is not a style preference. The
+publish job's CLI upgrade step was recorded here as a *weakness* — "npm itself is unpinned" — with
+nothing saying what it was for, so a later hardening pass deleted it and `v0.3.0` could not
+authenticate. Anything stated as a fact without the observation behind it will eventually be tidied
+away by someone with good intentions. One clause is enough: *what it does, and what happens without
+it.*
+
+🔴 **Each agent reads only its own file.** A rule in `CLAUDE.md` that the implementer needs does not
+reach the implementer. When a run establishes something, put it in the file of the agent whose job
+it is — and in `CLAUDE.md` only if it is a fact about the repository rather than an instruction for
+one phase.

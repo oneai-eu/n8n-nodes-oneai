@@ -20,7 +20,7 @@ different machine, and copying across the difference is the failure mode to guar
 ## Order
 
 ```
- 0  drift-check + paired-item-check + panel-check  ── always first, and after every change
+ 0  drift-check + paired-item-check + panel-check + eslint --no-inline-config  ── first, and after every change
  1  node-architect           ── selection: what belongs in a workflow node ⏸ GATE
  2  node-implementer         ── one operation family per run
  3  node-validator  ┐
@@ -32,10 +32,20 @@ different machine, and copying across the difference is the failure mode to guar
 The **⏸ GATE** after the architect is the only mandatory stop. Selection is a product decision
 (`CLAUDE.md`, "What belongs in the node") and an agent may propose it but never rule it.
 
-`node-trace` is not optional here. Two of the most valuable open questions can only be answered by a
-running n8n: whether our operations still appear as **actions** in the nodes panel after the 0.1.9
-`loadOptions` change, and whether a passed-through axios error leaks the `Authorization` header into
-the output panel.
+🔴 **The three `.mjs` checks are not one opinion split three ways, and treating them as such has
+already misled a run.** Only `drift-check` and `paired-item-check` parse `router.ts`; `panel-check`
+reads `modes.ts` and therefore does **not** move when a router arm disappears. Never infer the
+shipped surface from panel-check's count. And `npm run lint` honours `eslint-disable` comments while
+the certification scanner does not, which is why the fourth command above is in the phase-0 set
+rather than in a release checklist — see `node-validator`.
+
+`node-trace` is not optional here. Both of the questions that used to justify it are now answered —
+the node **is** findable in the panel (the `loadOptions` `resource`/`operation` shape and the "AI"
+codex category were the two causes, both reverted), and a passed-through axios error does **not**
+carry the `Authorization` header into the execution record. Neither answer is permanent: the first
+is invisible to every gate and only a browser can re-establish it, and the second rests on one line
+of `n8n-workflow` (`node-security`, axis 2). The bench is also where `usableAsTool`, item linking
+across several input items, and binary output land or fail.
 
 ---
 
@@ -67,11 +77,31 @@ Read `nodes-base`; **never vendor it** into this repository.
 `main` and never `gh pr ready`.
 
 🔴 **The publish trigger is `gh release create`, not `npm publish`.**
-`.github/workflows/publish.yml` fires on `release: [created]` and runs
-`npm publish --access public --provenance`. A bare tag does nothing; a *release* ships to npmjs.org,
-at whatever version `package.json` carries at that commit. It authenticates by **OIDC trusted
-publishing**, so there is no token to revoke — the control is who may create a release. The hooks
-refuse release creation, tag pushes and `npm publish` alike. **No AI attribution anywhere.**
+`.github/workflows/publish.yml` fires on `release: [created]` and publishes with `--provenance`. A
+bare tag does nothing; a *release* ships to npmjs.org, at whatever version `package.json` carries at
+that commit. It authenticates by **OIDC trusted publishing**, so there is no token to revoke — the
+controls are who may create a release and who may approve the `npm-publish` environment the job now
+waits on. The hooks refuse release creation and tag pushes alike. **No AI attribution anywhere.**
+
+🔴 **A path travelled only at release time cannot be validated by any gate that runs at commit
+time.** Every gate this repository has runs on a branch; nothing here publishes. That is not a
+theory: a hardening pass deleted the CLI upgrade step from `publish.yml` on the grounds that an
+unpinned `npm@latest` builds the artefact, every gate stayed green, **no release ran in between**,
+and the next one — `v0.3.0` — failed to authenticate. The step is now pinned and load-bearing
+(`CLAUDE.md`, "The CLI upgrade step is not tidy-up"). The rule that generalises: **an edit to that
+file is UNTESTED until a release proves otherwise, and the pull request must say so** rather than
+presenting it as verified.
+
+🔴 **Two working facts about the bash hook**, because losing a run to them is avoidable:
+
+- **It matches the command TEXT, not the action.** A commit message or a `grep` pattern that merely
+  *contains* a forbidden verb is refused, as is editing `publish.yml` through a shell heredoc. Use
+  the file-editing tools, and write *about* those commands without spelling them into a shell.
+- 🔴 **A refusal kills the whole invocation.** One refused command silently swallowed a
+  `git checkout -b` chained ahead of it and the next commit landed on local `main`. **One risky verb
+  per command**, and check `git rev-parse --abbrev-ref HEAD` after any refusal. The hook is
+  evaluated before anything runs, so relaxing a rule and using it in the same invocation cannot
+  work — two calls, always.
 
 **Reports are working material.** Phase reports and orchestration prompts stay untracked. Product
 documentation — README, the codex file, anything a maintainer needs — is committed.
@@ -111,12 +141,14 @@ bodies change, and the operation you did not touch is the one that broke.
 
 `npm run lint` · `npm run build` · `npx tsc --noEmit` · `node scripts/drift-check.mjs` ·
 `node scripts/paired-item-check.mjs` · `node scripts/panel-check.mjs` ·
-`npx @n8n/scan-community-package`.
+`npx eslint nodes/ credentials/ --no-inline-config` · `npx @n8n/scan-community-package`.
 
-🔴 Both checkers exit **2** when their own extractor is broken; that is never a finding, it means
+🔴 The checkers exit **2** when their own extractor is broken; that is never a finding, it means
 every number they printed is fiction. And the scanner examines the **published** package, not the
 working tree, so it can never gate a branch — parse its output for `✅`/`❌`, since its exit code is
-0 even on failure.
+0 even on failure. Its **verdict**, though, is reproducible before publishing: the
+`--no-inline-config` run above is what it reports, and skipping it is how `0.2.0` and `0.3.0` both
+shipped failing certification with every gate green.
 
 Then the three-way check the connector pipeline does well: ratified selection ↔ implementer's claims
 ↔ live code. Judges test quality by the property-not-token standard, and re-runs the mutations
@@ -127,9 +159,10 @@ rather than believing the counts.
 Small and specific. The axes:
 
 - **the credential**: read only through `httpRequestWithAuthentication`, never reconstructed, never in a parameter, never logged
-- 🔴 **what reaches the workflow author when we throw**: does a passed-through axios error carry the `Authorization` header into the output panel or the persisted execution record? This is the one credential-exposure question in an otherwise clean picture, and it is **open**
+- **what reaches the workflow author when we throw**: settled 2026-09-03 — the `Authorization` header is unreachable from what n8n persists — but the reason is a single field declaration in `n8n-workflow`, so a version bump **reopens the question**
 - **what we put into workflow output**: a node's output is persisted and visible; provider error bodies land there
-- **npm supply chain**: lifecycle scripts, dependencies added, what the published tarball contains
+- 🔴 **what a model can reach**: `usableAsTool` is all-or-nothing per node, so every operation — including the state-changing ones — is one hop from an AI Agent, and the `action` string is the only description it gets
+- **npm supply chain**: lifecycle scripts, dependencies added, what the published tarball contains, and who can approve the publish environment
 
 Not: multi-tenancy, confirmation gates, our own egress. Those are the platform's.
 
@@ -139,6 +172,11 @@ Not: multi-tenancy, confirmation gates, our own egress. Those are the platform's
 open it the next morning and try the thing. Replace the installed community package there and
 restart it; production is `n8n.oneai.eu` and the `-ralf` container is a colleague's. oneAI to trace
 against is **devtest** on the same host.
+
+🔴 **The bench is no longer empty.** It runs the published `@oneai-eu/n8n-nodes-oneai@0.3.0` on n8n
+**2.37.9** and carries **26 saved workflow nodes of this type inside the owner's real automations**.
+Never delete or edit a workflow you did not create, and read the `typeVersion` rules as concrete:
+those 26 nodes are the ones a renamed parameter breaks silently.
 
 On the bench, `docker restart` is allowed and is part of deploying; `stop`, `kill` and `rm` are not.
 🔴 Never `--remove-orphans` on that host — it deletes containers that are not in the compose file
@@ -173,4 +211,4 @@ Stop and ask rather than proceed when:
 - the drift check's vacuity guard fires — the extractor is broken, and any number it prints is fiction
 - a trace cannot reach a real n8n or a real oneAI. Report `NOT-REACHED`; do not simulate
 - an action would touch the registry, `main`, or a colleague's container
-- 🔴 a change would alter `.github/workflows/publish.yml`, `package.json`'s `version`, or add a lockfile. Each of those changes **the publish path itself**, which only the owner rules — and note that the path today runs no tests, no drift check and no `@n8n/scan-community-package`, with `npm install` against **no committed lockfile**, so `dist/` is built from whatever resolved in that job
+- 🔴 a change would alter `.github/workflows/publish.yml` or `package.json`'s `version`. Either changes **the publish path itself**, which only the owner rules, and which no gate here can test — `package-lock.json` is now committed and the job runs `npm ci`, but the path still runs no tests, no drift check and no `@n8n/scan-community-package`, and `dist/` is built in that job. 🔴 **Do not "simplify" the pinned `npm install -g npm@…` step**: it is what makes OIDC authentication possible at all, and removing it is what broke `v0.3.0`

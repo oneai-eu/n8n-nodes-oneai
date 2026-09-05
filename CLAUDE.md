@@ -44,9 +44,23 @@ alone protects a door nobody uses. The hook refuses release creation, tag pushes
 `npm version` and `npm dist-tag`. That refusal is not an obstacle to route around — a release is the
 owner's, always.
 
+🔴 **Two working facts about that hook, both learned the expensive way.**
+
+*It matches the command TEXT, not the action.* A commit message containing the words "npm version",
+a `grep` pattern containing them, and an edit to `publish.yml` — whose contents include
+`npm publish` — were all refused. **Write about these commands without naming them**, or use the
+file-editing tools rather than a shell heredoc. And 🔴 **the refusal kills the whole invocation**:
+one refused command silently swallowed a `git checkout -b` chained ahead of it, and the next commit
+landed on local `main`. Caught before any push — but the habit that saves you is *one risky verb per
+command*, and checking `git rev-parse --abbrev-ref HEAD` after a refusal.
+
+*The hook is evaluated before anything in the command runs*, so relaxing a rule and using it in the
+same invocation can never work. Two calls, always.
+
 **2. There is no npm token to revoke.** Publishing uses **OIDC trusted publishing**
 (`id-token: write`, `--provenance`, and no `NODE_AUTH_TOKEN` anywhere in the workflow's history).
-The control surface is *who may create a release in this GitHub repository* — nothing else. It also
+The control surface is *who may create a release in this GitHub repository*, plus *who may approve
+the `npm-publish` deployment environment* the job now waits on — nothing else. It also
 means the provenance attestation that n8n's verification depends on is produced here, so **staying
 on GitHub is a technical requirement**, not a habit.
 
@@ -57,12 +71,36 @@ on GitHub is a technical requirement**, not a habit.
 | gates that run | `prepublishOnly` = `npm run build && npm run lint`, during `npm publish` |
 | gates that do **not** run | tests, the drift check, `@n8n/scan-community-package` |
 | **`package-lock.json` IS committed** | CI runs `npm ci`. It used to be `.gitignore`d, which an earlier analysis called "a deliberate act, not an oversight" — the history does not support that: the line arrived in a large feature commit alongside `pnpm-lock.yaml`, with no rationale, and reads as a generic ignore rather than a decision about reproducibility |
-| `npm install -g npm@latest` | npm itself is unpinned in the publish job |
+| 🔴 `npm install -g npm@12.0.2` | **Load-bearing. Do not remove it.** See below |
 
 `files: ["dist"]`, so the published artefact is built *in that job* from dependencies resolved that
 minute. The package has **zero runtime dependencies**, so this bites through devDependencies —
 `typescript`, `@n8n/node-cli`, `eslint` — which are exactly what *builds* `dist/`. What ships is
 therefore not provably what anyone tested.
+
+#### 🔴 The CLI upgrade step is not tidy-up. It is what makes publishing possible.
+
+An earlier version of this file listed `npm install -g npm@latest` as a weakness — "npm itself is
+unpinned in the publish job" — and a hardening pass duly deleted it. **That broke publishing**, and
+`v0.3.0` failed on 2026-09-05 with:
+
+```
+npm error 404 Not Found - PUT https://registry.npmjs.org/@oneai-eu%2fn8n-nodes-oneai
+```
+
+which reads like a missing package and is a **failed authentication wearing its costume**. npm's
+OIDC trusted publishing requires **CLI ≥ 11.5.1 and Node ≥ 22.14.0**. Node 22 bundles npm **10**, so
+without the upgrade npm cannot authenticate by OIDC at all: it falls back to token auth, finds no
+token — there deliberately is none — and the registry answers 404 rather than 403.
+
+The step is now **pinned** (`npm@12.0.2`), which keeps both properties: new enough for OIDC, and the
+CLI decided in the file rather than in the minute the job runs.
+
+🔴 **The lesson generalises past this one line.** *No release ran between the hardening and the
+release it broke.* A change to a path that is only travelled at release time cannot be validated by
+any gate that runs at commit time, and this repository has no test that publishes. **Treat every
+edit to `.github/workflows/publish.yml` as untested until a release proves otherwise**, and say so
+in the pull request rather than presenting it as verified.
 
 Improving that (a lockfile, `npm ci`, the drift check and the scanner in CI) is a **proposal to the
 owner**, not an agent's edit: changing the publish path is itself a release-affecting act.
@@ -82,9 +120,16 @@ with", no session link) in commits, PR bodies or files.
 | **package version** (whatever `package.json` says) | npm semver, read by the operator who upgrades | **none directly** — the upgrade replaces the code every existing workflow runs |
 | **node `typeVersion`** (`version` in `OneAi.node.ts`) | stamped into every saved workflow node | **everything** — the only thing that pins old behaviour |
 
-Our node declares `version: 1` as a **plain number**, so every oneAI node anyone has ever placed is
-saved as `typeVersion: 1`. Bumping the package from `0.1.8` to `0.1.9` created no new node version —
-it silently replaced the code behind `typeVersion: 1` on every instance that upgraded.
+Every oneAI node anyone has ever placed is saved as `typeVersion: 1`. Bumping the package from
+`0.1.8` to `0.1.9` created no new node version — it silently replaced the code behind
+`typeVersion: 1` on every instance that upgraded, and so did `0.2.0` and `0.3.0`.
+
+**The node is now a `VersionedNodeType`** (`OneAi.node.ts` wraps `v1/OneAiV1.ts`) with
+`nodeVersions: { 1: … }`. Nothing about the constraint below softened — what changed is that adding
+a `typeVersion` is now affordable when it is finally needed.
+
+🔴 **This is not abstract.** The bench carries **26 saved workflow nodes of this type**, all
+`typeVersion: 1`, across the owner's real automations. A renamed parameter breaks those silently.
 
 `VersionedNodeType.getNodeType(version)` is a **bare map lookup with no fallback**, so:
 
@@ -147,6 +192,16 @@ request body), lint and `tsc` have nothing to say. Until a response tier exists,
 after touching the surface — compare each call's declared `200` content type against the transport
 helper it uses; `oneAiApiRequestRaw` is the binary one.
 
+🔴 **The blind spot extends past the helper, to the two constants each binary operation carries.**
+An output filename and MIME type must be set explicitly, as module constants, and the MIME type
+passed to `prepareBinaryData` — whose fallback when it has to sniff is `text/plain`, silent and
+undetectable. Breaking either constant reddens **nothing** (`TODO.md` BL-24) and surfaces in the
+*next* node: n8n's Compression node dispatches on `binaryData.fileExtension`. Measured 2026-09-05,
+and it corrected our own source comment: **the MIME type is the load-bearing one** — stripping
+`.zip` from `audit-logs.zip` still works, because `prepareBinaryData` derives the extension from the
+MIME type when the name supplies none, while a wrong MIME type fails with
+`Unsupported archive format ".bin"`.
+
 ### 🔴 Two ways to make this node invisible in the nodes panel
 
 Both shipped. Both were found by a person typing "oneai" into a real n8n and getting nothing —
@@ -190,6 +245,37 @@ Each cost a live request to discover; add to this list rather than rediscovering
 - **`POST …/rows` takes one row.** `{ data: [ … ] }` is rejected with
   `Expected object but got array`; the plural `ids[]`/`inserted` in its response is a shape shared
   with the bulk CSV endpoint, not evidence of bulk capability.
+- 🔴 **`GET /api/audit/logs` clamps `pageSize` to 30 SILENTLY.** The cap lives in the spec as prose
+  ("Default is 10, maximum is 30"), not as a schema `maximum`, so no drift tier can see it, and the
+  endpoint never rejects. Asking for 50 returns 30 and reports nothing — which is how `0.2.0`
+  shipped a Limit field that under-delivered at its own default. n8n's lint rules fix a `limit`
+  parameter's default at 50 and its description verbatim, so the promise has to be kept by paging,
+  not by capping the field.
+- **`since` on `GET /api/audit/logs` is EXCLUSIVE** (`>`, not `>=`), traced live. That is right for a
+  scheduled poll — each log is read once — but the spec's own wording says "at or after".
+- **`thumbnail: true` is a no-op on chat blobs** on the devtest build: the full and thumbnail
+  responses came back byte-identical, confirmed by calling the API directly without the node.
+- 🔴 **`POST /api/audit/logs/export` returns HTTP 500 for every caller** — `column reference
+  "org_id" is ambiguous`. The export query joins `users` while the shared filter builder emits an
+  unqualified predicate. Reported as `TODO.md` BF-4; it is a platform defect, not ours, and our
+  operation ships against it deliberately.
+
+### Two structural facts that close doors, so nobody re-opens them
+
+- 🔴 **A webhook-based trigger node is impossible.** All twelve `api/webhooks` endpoints are
+  *receivers* — every `summary` begins with "Receive" — the OpenAPI 3.1 top-level `webhooks` object
+  is absent, and **0 of 406 operations carry a `callbacks` object**. Nothing registers a URL for
+  oneAI to call, so n8n's `webhookMethods` shape has nothing to attach to. A **polling** trigger
+  stays possible; `GET /api/audit/logs` is the only pollable event with a server-side cursor.
+- 🔴 **`usableAsTool` cannot hide an operation from the tool variant.**
+  `UsableAsToolDescription.replacements` is `Partial<Omit<INodeTypeBaseDescription,'usableAsTool'>>`
+  and `INodeTypeBaseDescription` has **no `properties` field**. It is all-or-nothing per node, so
+  every operation — including approval verdicts like `auditLog:review` — is reachable by a model in
+  one hop. Precedent, measured rather than assumed: n8n's own `SlackV2` is `usableAsTool: true` and
+  exposes `archive`, `kick` and `delete`. **The action string is the only signal a model gets**, so
+  name state-changing operations for what they do.
+  Placement note: on a `VersionedNodeType`, `usableAsTool` belongs on the **version** description,
+  not the base — `Slack.node.ts` has none and `SlackV2` has it, and Slack is enumerated as a tool.
 
 ---
 
@@ -230,7 +316,8 @@ not exist, reported by nothing. With the fix, ten rows named item 0 and ten name
 
 ```
 nodes/OneAi/
-  OneAi.node.ts          the node description; `version`, `usableAsTool`, the property list
+  OneAi.node.ts          the `VersionedNodeType` wrapper: base description + `nodeVersions: { 1 }`
+  v1/OneAiV1.ts          🔴 the version description — `version: 1`, `usableAsTool`, the property list
   OneAi.node.json        the codex file (categories, docs links)
   actions/
     router.ts            loops the INPUT ITEMS and dispatches resource+operation
@@ -271,7 +358,17 @@ npx tsc --noEmit      # strict, noImplicitAny
 node scripts/drift-check.mjs        # spec ↔ shipped surface, on shapes
 node scripts/paired-item-check.mjs  # lineage: every row names the input item it came from
 node scripts/panel-check.mjs        # can a workflow author FIND the node in the panel?
+
+# 🔴 What the certification scanner will say, BEFORE anything is published.
+# `npm run lint` honours `eslint-disable` comments; the scanner does not.
+npx eslint nodes/ credentials/ --no-inline-config
 ```
+
+🔴 **`panel-check.mjs` is not a second opinion on the shipped surface.** It reads `modes.ts`, so
+removing a `router.ts` arm leaves it green while the drift check and the lineage check both move.
+Only those two parse the router. It also hard-codes `OneAi.node.ts` / `OneAi.node.json`, so a second
+node file — a trigger, a chat-model sub-node — would be invisible to the very checker that exists to
+keep this node findable (`TODO.md` BL-20).
 
 All three `scripts/*.mjs` checks exit **1** on a real finding and **2** when their own extractor is
 broken. A 2 means every number they printed is fiction — it is never a finding.
@@ -295,7 +392,20 @@ checker that silently stops running is worth less than none.
 
 ### 🔴 `@n8n/scan-community-package` — what it is, and three things that are not obvious
 
-Run 2026-09-03 for the first time. **`@oneai-eu/n8n-nodes-oneai@0.1.9` passes all security checks.**
+🔴 **Current state, 2026-09-05: `0.3.0` and `0.2.0` both FAIL it.** `0.1.9` passed, on 2026-09-03.
+The regression arrived with the static `resource`/`operation` options that made the node findable
+again, and it went unnoticed for two releases because the gate set does not run this check — see
+point 2 below for the command that would have caught it. The violation the scanner named is
+`node-param-default-missing` at `modes.ts:241`: a `default` **is** present but computed, and the
+rule requires a literal. Fixing it is a trade rather than a repair, so it is an owner ruling
+(`TODO.md` BF-6), not something to quietly "fix" on the way past.
+
+Re-measured 2026-09-05 on the working tree: the reproduction command below reports **two** errors,
+not one — that same line, and `@n8n/community-nodes/require-continue-on-fail` at `v1/OneAiV1.ts:148`.
+Both are inline-suppressed, so `npm run lint` is green on both. `INTERPRETED`: whether the scanner
+reports the second as well is unverified, since it analyses the published `dist/` JavaScript rather
+than this source — so read its actual output instead of assuming the two lists agree. The safe
+reading is that there are **two** suppressions standing between this package and certification.
 
 ```
 npx @n8n/scan-community-package @oneai-eu/n8n-nodes-oneai
@@ -304,9 +414,21 @@ npx @n8n/scan-community-package @oneai-eu/n8n-nodes-oneai
 1. **It takes a package NAME, not a path.** Given a directory it fails with
    `Cannot read properties of undefined (reading 'latest')` while calling the target `.@null`. It
    downloads the package **from npm**, verifies its provenance against GitHub, and analyses that.
-2. **So it cannot gate local code.** It only ever examines something already published — it is a
-   post-publish verification, not a pre-release check. Anything that must be caught *before* a
-   release has to be caught by lint, the drift check or a test.
+2. **So the tool cannot gate local code** — but 🔴 **its verdict can be reproduced before you
+   publish, and this file used to say otherwise.** The scanner's failing check is an ESLint run, and
+
+   ```bash
+   npx eslint nodes/ credentials/ --no-inline-config      # exactly what the scanner reports
+   ```
+
+   reproduces it on the working tree. `--no-inline-config` is the whole point: **`npm run lint`
+   honours `eslint-disable` comments and the scanner does not.** That is not academic — it is how
+   both `0.2.0` and `0.3.0` shipped **failing** the scanner while every gate was green, on a
+   `node-param-default-missing` suppressed by the comment at `modes.ts:240` and reported at 241.
+
+   So: an inline `eslint-disable` in this repository is not a local decision. It is a certification
+   failure with a comment in front of it. Add the `--no-inline-config` run before trusting a green
+   lint, and never suppress a rule without recording *why the scanner should be wrong too*.
 3. 🔴 **Its exit code is 0 even when it fails.** The failing run above printed
    `❌ Package … has failed security checks` and still exited **0**. A CI step gating on the exit
    code would pass on failure. **Parse the output for `✅`/`❌`; never trust the status.**
@@ -326,10 +448,11 @@ Both halves are ours, so a trace can be end-to-end and real.
 - 🔴 **Deploy into `n8n.oneai.de` — that is what it is for.** Owner ruling 2026-09-04: it is the
   **test bench**, stood up so that a development run ends with the node *running* somewhere the
   owner can open it the next morning and try it. A run that leaves only pull requests is half
-  finished. The container is `oneai-devtest-n8n`, and it already carries
-  `@oneai-eu/n8n-nodes-oneai` as an installed **community package**, so a deployment there exercises
-  the real node type `@oneai-eu/n8n-nodes-oneai.oneAi` — not the `CUSTOM.` name a linked directory
-  gives you.
+  finished. The container is `oneai-devtest-n8n`, running n8n **2.37.9** with the published
+  `@oneai-eu/n8n-nodes-oneai@0.3.0` installed as a **community package**, so a deployment there
+  exercises the real node type `@oneai-eu/n8n-nodes-oneai.oneAi` — not the `CUSTOM.` name a linked
+  directory gives you. 🔴 **It is also in use**: 26 saved workflow nodes of this type across the
+  owner's real automations. Add your own workflows; never delete or edit one you did not create.
 - 🔴 **Production is `n8n.oneai.eu`, a different machine. Never touch it.** And
   `oneai-devtest-n8n-ralf` is a colleague's: never stop, restart or remove it. Never run
   `docker compose … --remove-orphans` on that host — it deletes containers that are not in the compose file and

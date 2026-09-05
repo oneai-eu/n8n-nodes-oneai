@@ -63,23 +63,40 @@ exists so that a development run leaves the node running somewhere the owner can
 next morning.** Finishing with two pull requests and a torn-down throwaway instance is finishing
 half the job.
 
-The container is `oneai-devtest-n8n`, and it already has `@oneai-eu/n8n-nodes-oneai` installed as a
-**community package**. Replace that package rather than linking a directory: it keeps the real node
-type `@oneai-eu/n8n-nodes-oneai.oneAi` and the community-node bookkeeping, and it is what a real
-user's install looks like.
+The container is `oneai-devtest-n8n`. It currently runs the **published**
+`@oneai-eu/n8n-nodes-oneai@0.3.0` from npm, as a **community package**, on n8n **2.37.9**. Replace
+that package rather than linking a directory: it keeps the real node type
+`@oneai-eu/n8n-nodes-oneai.oneAi` and the community-node bookkeeping, and it is what a real user's
+install looks like.
+
+🔴 **The bench is somebody's working instance, not a scratch pad.** It carries **26 saved workflow
+nodes of this type across the owner's real automations**. Never delete or modify a workflow you did
+not create; create your own, name them so they are recognisable, and leave the owner's alone. Those
+26 nodes are also the concrete reason the `typeVersion` rules matter — they are all `typeVersion: 1`
+and a renamed parameter breaks them without a word.
 
 ```bash
 npm pack                                   # build the tarball from the branch
-# copy in, then, as the `node` user, in /home/node/.n8n/nodes:
-#   npm install /tmp/<tarball>             # chmod 644 the tarball first - root-owned files are unreadable to `node`
+# copy it in, then, as the `node` user, in /home/node/.n8n/nodes:
+#   npm install /tmp/<tarball>
 # then rewrite nodes/package.json to a plain version string (npm leaves a `file:` path)
 docker restart oneai-devtest-n8n           # allowed, and required for n8n to pick it up
 ```
 
-🔴 **Mark the version so nobody mistakes it for the release.** Set `installed_packages`.`installedVersion`
-to something like `0.1.9-pr3`. Left at the release number, the UI claims to be running npm's version
-while running unreleased code; a marker also makes the rollback obvious (install the real version
-from npm).
+Three details that each cost a cycle:
+
+- 🔴 **A tarball `docker cp`'d in is owned by root, and npm runs as `node`.** `chown node:node` it
+  before installing; `chmod 644` alone is not always enough.
+- 🔴 **npm's `rm -rf` of the existing package happens BEFORE the install can fail.** A failed install
+  therefore leaves the bench with **no oneAI node at all** — which is a broken instance for the
+  owner, not a failed experiment. Have the rollback ready before you start, and verify the node
+  loaded after the restart rather than assuming.
+- 🔴 **The marker version must be one that cannot exist on npm**, so nobody mistakes the bench for a
+  release: `0.2.0-bench.<sha>` is the shape used. Set `package.json`'s version to it **and** update
+  `installed_packages`.`installedVersion` in the database to match — n8n reads the Community Nodes
+  page from the database, so leaving it at the release number makes that page state a version that
+  is not running. A marker is also what makes the rollback obvious: install the real version from
+  npm.
 
 🔴 **Read the type cache only AFTER the restart has finished.** It is regenerated during boot, and
 reading it while n8n is still starting returns the previous contents. That race produced a confident
@@ -130,14 +147,19 @@ unproven. Never print a key. Delete what you created and **verify the deletion**
    panel at all. Two causes, both measured live — `resource`/`operation` coming from `loadOptions`
    (zero actions, because the creator is action-first) and `"AI"` in the MAIN node's codex
    categories (routes it into the AI branch and out of the search). `scripts/panel-check.mjs` now
-   guards both; run it, but **do not mistake it for the trace**. It reads source, not a browser.
+   guards both; run it, but **do not mistake it for the trace**. It reads source, not a browser —
+   and it reads `modes.ts` rather than the router, so it is not evidence about the shipped surface
+   either.
 
    The only real test is a person typing the node's name into the panel of the deployed instance.
    Nothing in a build, a diff or a type cache shows this. If you cannot get a browser, say
    **`NOT-REACHED`** and ask the owner to type one word — it costs them five seconds and it is the
    difference between a node that ships and a node that ships invisibly.
-2. **As an AI tool** — the node declares `usableAsTool`. Wire it under an AI Agent and inspect the
-   tool schema it exposes.
+2. **As an AI tool** — the node declares `usableAsTool` (on the **version** description, `OneAiV1`).
+   Wire it under an AI Agent and inspect the tool schema it exposes. It is **all-or-nothing**: there
+   is no way to withhold an operation, so what you are checking is whether each `action` string
+   describes the operation honestly enough for a model choosing between them — that string is the
+   only description the model gets.
 3. **The workflow that matters** — build the real thing, not a smoke test. For oneData: pull data
    from another n8n node and land it in a oneAI dataset. That is the composition the node exists for.
 4. 🔴 **Item linking** — run the node over **several** input items and confirm each output row is
@@ -152,10 +174,20 @@ unproven. Never print a key. Delete what you created and **verify the deletion**
    from `{item:0}`…`{item:9}` — eight input items that did not exist — where the fixed build named
    item 0 ten times and item 1 ten times. Choose an operation returning **many rows per item**; one
    that returns a single row cannot show the difference.
-5. 🔴 **The credential in a failure** — point the credential at something that returns 401, run it,
-   and read the output panel **and the persisted execution record**. Does the `Authorization` header
-   appear? Thirty minutes, and it settles the one open credential question.
-6. **Errors and `continueOnFail`** — one bad item among good ones: does the run behave as n8n expects?
+5. 🔴 **Binary output, downstream** — the class no gate can see. Breaking a binary operation's
+   filename or MIME constants reddens **nothing** (`TODO.md` BL-24), and the failure lands in the
+   *next* node: n8n's Compression node dispatches on `binaryData.fileExtension`, not the MIME type.
+   So do not stop at "bytes came back" — wire the output into a real consumer (Compression for a ZIP,
+   the editor preview for an image) and see it open. Measured 2026-09-05: the **MIME type** is the
+   load-bearing constant, because `prepareBinaryData` derives the extension from it when the filename
+   supplies none — dropping `.zip` still worked, a wrong MIME type failed with
+   `Unsupported archive format ".bin"`.
+6. 🔴 **The credential in a failure** — point the credential at something that returns 401, run it,
+   and read the output panel **and the persisted execution record**. Settled 2026-09-03: the
+   `Authorization` header does **not** appear. Re-run this leg whenever `n8n-workflow` moves — the
+   safety is one field declaration in `ExecutionBaseError` (`node-security`, axis 2), so a version
+   bump reopens it and nothing else will tell you.
+7. **Errors and `continueOnFail`** — one bad item among good ones: does the run behave as n8n expects?
 
 ## Report
 
