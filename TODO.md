@@ -93,6 +93,16 @@ a silent no-op. `docker restart` is the only container verb allowed on that host
 - **OWNER-7 · A `oneAI Chat Model` sub-node.** An LLM sub-node that n8n's AI Agent could use with the
   oneAI Gateway, rather than an action node an agent calls as a tool. Named as a separate spike when
   the v0.3.0 scope was ruled, and deliberately not part of that run. *(no work done)*
+- **OWNER-8 · Ship the approval verdicts as AI-callable, or hold them back?**
+  🔴 `usableAsTool` **cannot hide an operation from the tool variant** —
+  `UsableAsToolDescription.replacements` is `Partial<Omit<INodeTypeBaseDescription,'usableAsTool'>>`
+  and `INodeTypeBaseDescription` has no `properties` field. So `agent:confirm` and
+  `auditLog:review` would be reachable by an LLM in one hop. **Narrowed by the owner's ruling of
+  2026-09-04:** Agent Builder is out of v0.3.0, so this now concerns **`auditLog:review` alone**. Precedent, measured: n8n's own
+  `SlackV2` is `usableAsTool: true` and exposes `archive`, `kick` and `delete`. Recommendation: ship
+  with explicit naming and a README warning — but it is the owner's call, because oneAI is a
+  compliance platform and an approval verdict is a different class of act. (Same finding is why
+  `PUT /api/compliance/llm` is rejected outright.)
 - **OWNER-2 · `main` has no branch protection and no rulesets, and five collaborators hold
   admin + push.** Publishing is triggered by *creating a GitHub release*, authenticated by OIDC
   trusted publishing — so there is **no token to revoke** and the entire control surface is who may
@@ -186,8 +196,16 @@ the defect.
 - **BL-4 · Generate types from `openapi/openapi.json`,** the way the platform generates
   `src/openapi.gen.ts`. Until then "follow the spec's types" is a habit a reviewer must police
   rather than something the compiler enforces. *(P2)*
-- **BL-5 · A dataset trigger.** Named by the architect as the highest-value follow-up, and blocked:
-  the API gives a poller no cursor. Needs an API-side change. *(P3)*
+- **BL-5 · A trigger node — and the reason it cannot be a webhook trigger.** Named by an earlier
+  architect run as the highest-value follow-up for datasets, and blocked there because the API gives
+  a poller no cursor. The 2026-09-04 pre-analysis generalises that finding across the whole API:
+  🔴 **all 11 `api/webhooks` endpoints are receivers** — every `summary` begins with "Receive", the
+  OpenAPI 3.1 top-level `webhooks` object is absent, and **0 of 401 operations carry a `callbacks`
+  object**. No endpoint registers a URL for oneAI to call, so n8n's `webhookMethods` shape has
+  nothing to attach to. A **polling** trigger stays possible; `GET /api/audit/logs` is the only
+  pollable event with a server-side cursor, and its `since` is *"clamped to the plan's retention
+  window"*, so a long-stopped workflow loses events rather than catching up. Prerequisite either
+  way: BL-20. See `docs/ANALYSIS-2026-09-04-v0.3.0-candidates.md`. *(P3)*
 - **BL-9 · Gateway-plan behaviour is unproven.** Both key classes were exercised again in v0.3.0 —
   `oai_` against `/api/auth/check` and `oai-gk_` against `/api/openai/v1/models`, both 200, and the
   gateway key drove a real AI Agent through an OpenAI-compatible chat model — but the devtest org's
@@ -276,7 +294,7 @@ the defect.
 - ✅ **OWNER-9 · The v0.3.0 scope, ruled by the owner and delivered.** Three loops closed —
   file ingestion, chat artefacts, compliance review — as `space` +4, `chat` +5 and `auditLog` +2.
   Eleven operations shipped where ten were ruled: `space:renameFile` was added under the one scope
-  question left open, and the live trace then confirmed it was not redundant. Session 0004.
+  question left open, and the live trace then confirmed it was not redundant. Session 0005.
   *Carried forward:* BL-20 … BL-27 and BF-4 / BF-5, all opened by that run.
 - ✅ **OWNER-5 · The publish path is reproducible.** `package-lock.json` is committed and CI runs
   `npm ci`; the actions are pinned to commit SHAs; `npm install -g npm@latest` is gone. 🔴 **Not

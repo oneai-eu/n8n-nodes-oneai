@@ -205,6 +205,58 @@ rollback command are in `TODO.md`'s frontier. Trace data was removed before cred
 removals were verified by reading them back; the audit-log rows the trace created cannot be removed,
 because `audit_logs` is append-only, which is the point of an audit trail.
 
+## Session 0004 — What the next release should be, and three doors that turned out to be closed (2026-09-04)
+
+**Pre-analysis only. No node code changed.** The owner asked, after `0.2.0` reached npm, which oneAI
+capabilities are valuable to a workflow author and still missing. Two agents ran **independently and
+with different mandates** — an architect that proposes, and a coverage map explicitly forbidden from
+recommending anything — so the proposal could be checked against measured facts instead of trusted.
+Every load-bearing claim was then re-verified by hand. Full report:
+`docs/ANALYSIS-2026-09-04-v0.3.0-candidates.md`.
+
+**Measured baseline:** 61 of 401 spec operations covered (15.2%), by two extractors whose covered
+sets differ by ∅. That percentage is recorded as *not* the finding — the rejection list is the more
+useful half.
+
+**Three doors closed, which is why the analysis was worth running:**
+
+1. 🔴 **A webhook trigger is impossible.** All 11 `api/webhooks` endpoints are receivers; no
+   `callbacks` object exists in any of the 401 operations. Both agents reached this independently.
+   BL-5 was widened rather than duplicated.
+2. 🔴 **An agent run takes no input** — `properties: {}`, `additionalProperties: false`. The
+   attractive "one run per item, this item as the prompt" story is not available, and would have
+   surfaced as a runtime surprise weeks after shipping.
+3. 🔴 **`usableAsTool` cannot hide an operation from the tool variant.** Verified in n8n's source:
+   `INodeTypeBaseDescription` has no `properties`. Approval verdicts are therefore LLM-reachable in
+   one hop → OWNER-8.
+
+**Overturned in-session, by the author of the claim:** an interim finding that the file/embedding
+surface was entirely uncovered. Wrong — `space:uploadFile` and `space:embedFiles` ship; the search
+had covered `dataset`, `datasetRow` and `reference` but not `space`, which is where the file path
+lives. The real gap is narrower and better: 6 of 11 `/files` endpoints ship, and what is missing is
+the **completion signal** (`stats`), not the ingestion. Recorded because the corrected finding
+became BL-21 and is now the first recommended block of v0.3.0 — the wrong version would have
+proposed rebuilding what already exists.
+
+**Recommendation entered:** v0.3.0 = finish the two half-open loops, then Agent Builder and the
+compliance loop — ~20 operations, no new dependency, no new `typeVersion`. The chat-model sub-node
+is deliberately *not* folded in: it is a spike (OWNER-7) whose one question is worth more than any
+operation on the list.
+
+**Owner ruling, same day — v0.3.0 is Block 1 + Block 3.** Agent Builder is deferred: *not finished
+in oneAI yet*, so building against it would be premature. The ruling is the safer one for a second
+reason the analysis had flagged in passing but not weighted enough: a `typeVersion: 1` operation
+must remain in the `nodeVersions` map for the life of the package, so even a single `agent:list`
+would have **frozen the resource name `agent` and its operation names against an API still in
+motion**. Scope becomes **10 operations** (64 → 74). OWNER-8 narrows with it — `agent:confirm` is
+gone, so the LLM-reachable-approval question now concerns `auditLog:review` alone. Deferred work
+carried to BL-22.
+
+**Not reached:** whether `GET …/files/extracted` works before embedding completes (one live devtest
+request); whether `ChatOpenAIResponses` completes a tool-calling round trip against oneAI. The spec
+snapshot is from 2026-09-03 and must be re-taken before implementation.
+
+---
 ## Session 0003 — 🔴 no entry was written (2026-09-04)
 
 **This heading is a reconstruction, added by Session 0004 from git and from `TODO.md`'s closed
@@ -224,10 +276,9 @@ with one version and no behaviour change.
 **Why it chose any of that is not recoverable.** The diff says what changed; nothing says who decided
 what, or what was overturned. Do not read this section as a record of that run's reasoning.
 
-**Session 0004 is not missing — it is in flight.** It is the pre-analysis that chose this release's
-scope, and it lives on the `analysis/v0.3.0-candidates` branch in its own pull request. Numbering
-here is chronological, so it takes 0004 and this run takes 0005; whichever pull request merges
-second will resolve a conflict in this file, and the resolution is to keep both entries.
+**Session 0004 is the pre-analysis that chose this release's
+scope. It landed first, as pull request #11, and is numbered 0004 here because numbering in this
+file is chronological rather than by merge order.
 
 ## Session 0002 — The last additions before a release, and the documentation that had to catch up (2026-09-04)
 
