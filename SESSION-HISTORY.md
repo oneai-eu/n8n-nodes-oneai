@@ -10,6 +10,85 @@
 
 ---
 
+## Session 0007 - Images on Create Response, and a credential scrub that never ran (2026-10-27)
+
+**Package version:** `0.3.3`, unchanged (npm `latest` is `0.3.3`). **Branches:**
+`feat/create-response-images` from `origin/main` `f3a1748`, draft PR #21; nothing merged, nothing
+released, nothing deployed. **Agents involved:** `node-architect`, `node-implementer` (initial
+build plus two fix rounds), `node-validator`, `node-security`, `node-docs`; `node-trace` not run.
+**Task:** the owner's own words did not reach this phase. As briefed: let `AI > Create Response`
+carry images, paired with oneAI PR #3488, which adds `images` to `POST /api/chats/{chatId}/http`.
+
+*No entries exist for the runs that produced `0.3.1`, `0.3.2` and `0.3.3`; their outcomes are only
+in `TODO.md` (BF-6, BF-7) and the git history. Numbering continues from 0006.*
+
+**Why the feature.** The only route for an image was `Space > Upload File` plus naming the path in
+the prompt, after which the model hunted for the file with 8-25 tool calls in 60-370 s, past both
+n8n's and the ingress' 300 s limits; a model without tools never saw the image at all. Inline
+images make it one model turn, and every n8n node that produces a binary becomes an input to a
+governed oneAI chat.
+
+**Decided, and why** (architect proposal, all five ratified by the owner):
+
+- A top-level **Add Images** switch plus **Image Data Field Name(s)** (comma-separated, default
+  `data`), in both input modes. This is n8n's own Anthropic "Message a Model" shape; a field inside
+  Additional Options could not reveal the dependent field.
+- One item = one request with that item's images, so the per-item loop and `pairedItem` stay as
+  they are.
+- The image limits (4 types, 8 images, 10 MB each, 25 MB together) are mirrored in the node because
+  the node's error can **name the binary field**, which the server cannot, and fails before ~33 MB
+  is uploaded. The 35 MB body cap is left to the server's 413.
+- No timeout override: the oneAI ingress cuts at 300 s anyway, and the feature removes the cause.
+- Image parts inside Messages (JSON) and image URLs are left out: a second route to the same field,
+  and a URL fetcher would move SSRF and size questions into n8n.
+- Images are read **before** a chat is created, so a refused image leaves no empty chat behind.
+- Owner rulings on the open questions: the minimum oneAI is "the release after #3488", **never a
+  version number**; images are stored with the user message and visible in the chat; a message is
+  still required with images.
+
+**Overturned during the run:**
+
+- The validator blocked on `filename`: n8n derives it from URLs and mail headers, and oneAI capped
+  it at 255. Fix round 1 truncated it. Security then found that oneAI had meanwhile **stopped
+  keeping the filename at all** (`c131fa696`) and answers a control character in it with a 400, so
+  fix round 2 removed `filename` from the request entirely. The contract moved mid-run; the
+  snapshot refresh must therefore come from whatever lands on oneAI `main`, not from the branch any
+  agent read.
+- A zero-byte binary was sent as `data: ""` and answered with a misleading server message; it is now
+  refused in the node, naming the field.
+- 🔴 **The credential scrub of Session 0004 never ran on the path that matters.** n8n-core wraps the
+  axios error in `NodeApiError` before our `catch`, so `withoutCredential` sees no `config`. A probe
+  through the real wrapping order put the `oai_` key into the persisted JSON on `n8n-workflow`
+  1.98.0. The README said the scrub made the outcome independent of the host; that sentence was
+  false and was corrected this session. The fix itself is a separate PR (BF-8, BF-9, OWNER-10).
+- And the reason the newer hosts are safe has changed: on the bench's n8n 2.37.9 it is no longer a
+  `cause` class field but upstream n8n #35216's bounded `toJSON()` projection, with the raw axios
+  error still reachable in memory as `cause`. The agent files that describe the old mechanism are
+  the owner's (OWNER-11).
+
+**Measured, not traced:** a stubbed-`execute` harness over the compiled code (20-24 cases) showed
+the off path byte-identical to `0.3.3`, every limit enforced at its exact boundary, and every
+refusal firing before any request. Thirteen mutations were applied and reverted, each reddening the
+harness as expected; the repository's checkers caught only one of them (a renamed top-level body
+key). The three blind spots that survived are filed as BL-29 (wrong item's binary), BL-30 (nested
+keys) and a re-measurement on BL-25 (helpers outside `actions/`). The harness is uncommitted working
+material, so none of these properties is guarded by anything in the repository.
+
+**Not reached:**
+
+- The live run on the bench. devtest does not run oneAI #3488 yet. U-2 (images visible in the chat)
+  is read from oneAI source, not observed; U-3 (whether an older n8n refuses a ~33 MB body through
+  `maxBodyLength`) is unmeasured.
+- The snapshot refresh and the nested-shape hand-check: they wait for #3488 on oneAI `main`.
+  Until then `drift-check` reports one expected FAIL on `images`.
+- `@n8n/scan-community-package`: on the validator's machine (Node 26) it printed only deprecation
+  warnings and exited 1 with no verdict. `npx eslint nodes/ credentials/ --no-inline-config` reports
+  one pre-existing finding (`v1/OneAiV1.ts:148`), unchanged.
+- The bench was not touched. **This entry must be reopened when the live run happens**, with what it
+  proved and what it left deployed.
+
+---
+
 ## Session 0006 — The release, and the guard that broke the thing it was hardening (2026-09-05)
 
 **`0.3.0` is on npm.** Both pull requests merged, version set, release cut, published with
