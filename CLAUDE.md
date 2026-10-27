@@ -167,7 +167,7 @@ elsewhere and a grep for `any` will never find it:
   grep -ro "IDataObject" nodes/ credentials/ --include=*.ts | wc -l
   grep -rn "as any\|: any\b" nodes/ credentials/ --include=*.ts | wc -l   # must stay 0
   ```
-**The spec is now committed** at `openapi/openapi.json` (325 paths / 401 operations) with an
+**The spec is now committed** at `openapi/openapi.json` (311 paths / 395 operations as of 2026-10-27) with an
 `openapi/PROVENANCE.md` naming the oneAI commit it was taken from and its SHA-256. Without that
 provenance every future drift report is unfalsifiable — "measured against which checkout?" has no
 answer.

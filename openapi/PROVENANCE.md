@@ -5,65 +5,38 @@ can say *drifted from what*. Regenerate the snapshot and update every field belo
 
 | | |
 |---|---|
-| **Source repository** | oneAI platform (`forgejo.infra.oneai.eu/oneai/oneai`) |
+| **Source repository** | oneAI platform (`forgejo.onedeploy.dev/oneai/oneai`) |
 | **Git ref** | `origin/main` |
-| **Commit** | `45819b7dfa9f21f6cd7940a76422243a30215c6f` |
-| **Commit date** | 2026-09-04T13:24:28+00:00 |
-| **Commit subject** | `feat(dynamics-sales): the data plane — the HTTP seam, the record renderer, and the pair predicates (#2670)` |
-| **Snapshot taken** | 2026-09-04 |
+| **Commit** | `2c29f06b21b164839345af849f6834fc1c4a5449` |
+| **Commit date** | 2026-10-27T08:17:44+00:00 |
+| **Commit subject** | `feat(agents): park unattended irreversible actions unless the org and the agent allow them, and audit both settings (#3046)` |
+| **Snapshot taken** | 2026-10-27 |
 | **Generator** | `npx tsx src/scripts/update-openapi.ts` (Yedra `app.build()`) |
-| **Working tree** | clean — `git status --porcelain` empty at generation time |
-| **SHA-256** | `87709448008567e4246db89adb1530b1261bf6db5677a23a78686608e4e43a71` |
-| **Size** | 666 370 bytes |
-| **Contents** | 330 paths / 406 operations |
+| **Working tree** | clean - a detached `git worktree` at `origin/main`, nothing but `openapi.json` written |
+| **SHA-256** | `ea880621a329d86808959ef27a49f455370f59a96c674e336188fb8b8cf494a0` |
+| **Size** | 717 294 bytes |
+| **Contents** | 311 paths / 395 operations |
 
 ## What changed against the previous snapshot
 
-Previous: `f2b70d0c8f28fab490e2db034609996cb8cfe2e6`, 2026-09-03, 325 paths / 401 operations,
-SHA-256 `13048f5408af10ba09e687480f3b2859e11615a271cd77737e524318ba2d68a1`.
+Previous: `45819b7dfa9f21f6cd7940a76422243a30215c6f`, 2026-09-04, 330 paths / 406 operations,
+SHA-256 `87709448008567e4246db89adb1530b1261bf6db5677a23a78686608e4e43a71`.
 
-**Five operations added, none removed, and `scripts/drift-check.mjs` is clean against the new
-document** — so nothing on the shipped surface moved.
+**58 operations added, 69 removed.** The removals are the connectors that moved out of oneAI into
+connector packages (their `/api/spaces/<provider>/...` setup calls and `/api/webhooks/<provider>`
+receivers) and the retired `/api/integrations/substrate/...` and `/api/tools/self-approvals`
+surfaces. The node calls none of them.
 
-```
-GET  /api/agent-definitions/schedules              List every scheduled trigger across the org's agents
-POST /api/spaces/businesscentral/companies         List companies in a Business Central environment
-POST /api/spaces/businesscentral/environments      List available Business Central environments
-POST /api/spaces/{spaceId}/files/rename            Rename a file within its folder
-POST /api/webhooks/businesscentral/{token}         Receive Business Central change notifications
-```
-
-Two notes for whoever reads this next:
-
-- 🔴 The new `POST /api/webhooks/businesscentral/{token}` is a **receiver**, like the other eleven.
-  It does not change the conclusion in `docs/ANALYSIS-2026-09-04-v0.3.0-candidates.md` that a
-  webhook-based trigger node is impossible — it strengthens it.
-- `POST /api/spaces/{spaceId}/files/rename` is new and sits **directly beside the file operations
-  v0.3.0 is about to add**. It was not part of the owner's ruled scope; it is flagged for the
-  architecture phase to rule on rather than folded in silently.
+`scripts/drift-check.mjs` against this document found **one** failure on the shipped surface:
+`project:update` sent `pinned`, which oneAI dropped when it replaced pins with per-user favorites
+(oneAI #3396); `PUT /api/projects/{id}` is `additionalProperties: false`, so every call that set it
+was rejected with a 400. Fixed in the same change as this snapshot.
 
 ## How this snapshot was taken
 
-Same constraint as last time, re-verified rather than assumed: the machine's oneAI checkout at
-`/root/oneai` was on `feat/invoke-api-governance` with **342 dirty tracked files**, so a spec
-generated from it would have described neither `main` nor any released state.
-
-The snapshot was generated from a **`git clone --shared` of that checkout** into a scratch
-directory, with `node_modules` symlinked and `.env` copied in. A shared clone reads the source's
-object store and writes nothing to it.
-
-**Difference from the 2026-09-03 procedure:** the clone's `origin` was re-pointed at Forgejo and
-`git fetch origin main` was run **inside the clone**, so the ref came from the server rather than
-from whatever the local checkout had last fetched. That keeps the write confined to the clone while
-removing "the local checkout's `origin/main` might be stale" as an unstated assumption. It happened
-to agree — but agreeing and being checked are different things.
-
-`WEBER_KEY` was again supplied as a placeholder in the *clone's* `.env`. It affects nothing in the
-emitted document: `app.build()` only walks the route tree.
-
-**`/root/oneai` was verified unchanged afterwards** — branch, HEAD, dirty-file count, worktree count
-and the mtime of its own scratch `openapi.json` all identical to the values recorded before the
-clone.
+From a detached `git worktree` of the oneAI repository at `origin/main` after `git fetch`, with
+`node_modules` symlinked and `.env` copied in, so the generator saw exactly the committed tree. The
+worktree was removed afterwards.
 
 ## Regenerating
 
