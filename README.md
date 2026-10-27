@@ -47,9 +47,11 @@ Inference through the oneAI Gateway: chat, images, speech, embeddings, transcrip
 
 **Create Response input modes:**
 - **Messages** — user-friendly role/content fields
-- **JSON** — full control for complex conversations, images, etc.
+- **JSON** - a message array, e.g. one built by an earlier node. Its parts carry text only; images go through **Add Images**.
 
 **Create Response options:** Reasoning Effort, a time zone for timestamp formatting, and **Chat Association** — route the message through an existing oneAI chat so it carries that chat's context and history. With association off, oneAI creates a chat in your personal project for the call.
+
+**Add Images** sends images from the input item's binary data with the message, so the model sees them directly instead of searching a space for them. Name the binary field(s) in **Image Data Field Name(s)** (default `data`, several separated by commas, e.g. after a Merge or Aggregate node). Accepted: PNG, JPEG, WebP or GIF; up to 8 images, 10 MB each, 25 MB together. The model must be able to read images, otherwise oneAI refuses the request. The images are stored with the user message, so they show in the chat in oneAI like any image a user attached. Works in both input modes. Needs a oneAI release that accepts images in chat messages; an older one rejects the request with ``Error at `images`: Unrecognized.`` (workflows with Add Images off are unaffected). In the tool version, Add Images only works if the item reaching the tool carries binary data.
 
 **Create Embedding** takes either a single text or a JSON array of texts, and offers an encoding format.
 
@@ -283,7 +285,7 @@ Unknown columns are rejected by oneAI rather than added silently. `Dataset > Upd
 
 Operations that **write** a file into a binary property: `AI > Generate Image`, `AI > Edit Image`, `AI > Generate Speech`, `Artifact > Export PDF`, `Artifact > Export PPTX`, `Audit Log > Export`, `Chat > Get Blob`, `Dataset > Export CSV`, `Space > Download File`.
 
-Operations that **read** one: `AI > Edit Image`, `AI > Transcribe Audio`, `Dataset > Import CSV`, `Space > Upload File`.
+Operations that **read** one: `AI > Create Response` (with Add Images on), `AI > Edit Image`, `AI > Transcribe Audio`, `Dataset > Import CSV`, `Space > Upload File`.
 
 `Chat > Save Blob to Space` moves bytes **without** a binary property at either end: oneAI copies the blob into the space itself, so a large file never travels through n8n.
 
