@@ -51,11 +51,15 @@ export const description: INodeProperties[] = [
 				description: 'Short project description',
 			},
 			{
-				displayName: 'Pinned',
+				// oneAI replaced pinning with per-user favorites, and its `PUT /api/projects/{id}`
+				// rejects `pinned` outright (`additionalProperties: false`). The parameter keeps its
+				// `pinned` name because a renamed parameter breaks saved workflows silently; only the
+				// label and the body field it fills changed.
+				displayName: 'Favorite',
 				name: 'pinned',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the project is pinned',
+				description: 'Whether the project is one of your favorites. Affects only you.',
 			},
 			{
 				displayName: 'System Prompt',
@@ -86,7 +90,7 @@ export async function execute(
 	const body: {
 		name: string;
 		description?: string;
-		pinned?: boolean;
+		favorite?: boolean;
 		systemPrompt?: string;
 	} = {
 		name,
@@ -97,7 +101,7 @@ export async function execute(
 	}
 
 	if (updateFields.pinned !== undefined) {
-		body.pinned = updateFields.pinned;
+		body.favorite = updateFields.pinned;
 	}
 
 	if (updateFields.systemPrompt !== undefined) {

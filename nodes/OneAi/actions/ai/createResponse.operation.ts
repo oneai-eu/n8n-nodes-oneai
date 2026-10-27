@@ -15,7 +15,8 @@ export const description: INodeProperties[] = [
 		type: 'options',
 		required: true,
 		default: '',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getModels',
 		},
@@ -40,8 +41,7 @@ export const description: INodeProperties[] = [
 			{
 				name: 'JSON',
 				value: 'json',
-				description:
-					'Send a full message array (for multi-turn conversations, images, etc.)',
+				description: 'Send a message array, e.g. one built by an earlier node',
 			},
 		],
 		default: 'messages',
@@ -63,7 +63,8 @@ export const description: INodeProperties[] = [
 		},
 		required: true,
 		default: { messageValues: [{ role: 'user', content: '' }] },
-		description: 'The messages to send to the model',
+		description:
+			'The messages to send. Only user messages reach the chat; instructions belong in the project, agent or persona.',
 		displayOptions: {
 			show: {
 				resource: ['ai'],
@@ -108,10 +109,9 @@ export const description: INodeProperties[] = [
 		name: 'messagesJson',
 		type: 'json',
 		required: true,
-		default:
-			'[\n  {\n    "type": "message",\n    "role": "user",\n    "content": "Hello"\n  }\n]',
+		default: '[\n  {\n    "type": "message",\n    "role": "user",\n    "content": "Hello"\n  }\n]',
 		description:
-			'Array of message objects. Each message needs "role" (user/assistant/system/developer) and "content" (string or content array).',
+			'Array of message objects, each with "role" and "content" (a string or an array of text parts). Only user messages are sent: a oneAI chat takes its instructions from the project, agent or persona, and its earlier turns from the chat history.',
 		displayOptions: {
 			show: {
 				resource: ['ai'],
@@ -203,6 +203,90 @@ export const description: INodeProperties[] = [
 	},
 ];
 
+/** A Responses-style content part. Only the text kinds can be carried by a chat message. */
+type ContentPart = string | { type?: string; text?: string };
+
+const TEXT_PART_TYPES = ['input_text', 'text', 'output_text'];
+
+/** One message as the author gave it, before it is reduced to the chat turn oneAI accepts. */
+interface InputMessage {
+	role: string;
+	content: string | ContentPart[];
+}
+
+/**
+ * The text of one message. `content` is a string, or a Responses-style content array whose text
+ * parts are `{ type: 'input_text' | 'text' | 'output_text', text }`.
+ *
+ * Anything else - an image, a file - is refused instead of sent: `POST /api/chats/{chatId}/http`
+ * takes one plain-text `message`, so there is nowhere to put it, and stringifying the array sent
+ * `[object Object]` to the model as if the author had typed it.
+ */
+function messageText(
+	this: IExecuteFunctions,
+	content: InputMessage['content'],
+	index: number,
+): string {
+	if (typeof content === 'string') {
+		return content;
+	}
+	if (!Array.isArray(content)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Each message needs a "content" that is a string or an array of text parts.',
+			{ itemIndex: index },
+		);
+	}
+	return content
+		.map((part) => {
+			if (typeof part === 'string') {
+				return part;
+			}
+			if (typeof part.text === 'string' && TEXT_PART_TYPES.includes(part.type ?? '')) {
+				return part.text;
+			}
+			throw new NodeOperationError(
+				this.getNode(),
+				`A message part of type "${part.type}" cannot be sent: a oneAI chat message carries text only.`,
+				{
+					itemIndex: index,
+					description:
+						'Upload files to a space and reference them in the chat instead, or use the oneAI Gateway for multimodal input.',
+				},
+			);
+		})
+		.join('\n');
+}
+
+/** The messages to send, from either input mode. */
+function readInput(this: IExecuteFunctions, inputMode: string, index: number): InputMessage[] {
+	if (inputMode === 'messages') {
+		const messagesData = this.getNodeParameter('messages', index) as {
+			messageValues?: Array<{ role: string; content: string }>;
+		};
+		return messagesData.messageValues ?? [];
+	}
+	// n8n hands a `json` parameter over already parsed when it is set by an expression, and as
+	// text when it is typed in.
+	const raw = this.getNodeParameter('messagesJson', index) as string | InputMessage[];
+	let parsed = raw;
+	if (typeof raw === 'string') {
+		try {
+			parsed = JSON.parse(raw);
+		} catch {
+			throw new NodeOperationError(this.getNode(), 'Messages (JSON) is not valid JSON.', {
+				itemIndex: index,
+			});
+		}
+	}
+	if (!Array.isArray(parsed)) {
+		throw new NodeOperationError(this.getNode(), 'Messages (JSON) must be an array of messages.', {
+			itemIndex: index,
+		});
+	}
+	return parsed;
+}
+
 export async function execute(
 	this: IExecuteFunctions,
 	index: number,
@@ -211,23 +295,31 @@ export async function execute(
 	const inputMode = this.getNodeParameter('inputMode', index) as string;
 	const associateChat = this.getNodeParameter('associateChat', index, false) as boolean;
 
-	// Build input messages
-	let input: IDataObject[];
-	if (inputMode === 'messages') {
-		const messagesData = this.getNodeParameter('messages', index) as {
-			messageValues?: Array<{ role: string; content: string }>;
-		};
-		const messageValues = messagesData.messageValues ?? [];
-		input = messageValues.map((msg) => ({
-			type: 'message',
-			role: msg.role,
-			content: msg.content,
-		}));
-	} else {
-		const messagesJson = this.getNodeParameter('messagesJson', index) as string;
-		input = JSON.parse(messagesJson) as IDataObject[];
-	}
+	const input = readInput.call(this, inputMode, index);
 
+	// A oneAI chat turn is one user message: the chat's project, agent or persona supplies the
+	// instructions, and the earlier turns come from the chat's own history. System, developer and
+	// assistant messages therefore have no place in the request. They used to vanish without a
+	// word; refusing them would break every saved workflow that carries one, so they are still
+	// left out, but the author is now told.
+	const userMessages = input.filter((m) => m.role === 'user');
+	if (userMessages.length === 0) {
+		throw new NodeOperationError(this.getNode(), 'At least one user message is required.', {
+			itemIndex: index,
+		});
+	}
+	const ignoredRoles = [
+		...new Set(input.filter((m) => m.role !== 'user' && m.content !== '').map((m) => m.role)),
+	];
+	// `addExecutionHints` is missing on older hosts, and we declare `n8n-workflow: *`.
+	if (ignoredRoles.length > 0 && typeof this.addExecutionHints === 'function') {
+		this.addExecutionHints({
+			type: 'warning',
+			location: 'outputPane',
+			message: `Only user messages are sent to a oneAI chat; the ${ignoredRoles.join(', ')} message(s) were not sent. Put instructions into the project's system prompt, an agent or a persona instead.`,
+		});
+	}
+	const content = userMessages.map((m) => messageText.call(this, m.content, index)).join('\n\n');
 
 	let chatId: string;
 	if (associateChat) {
@@ -263,22 +355,6 @@ export async function execute(
 		reasoningEffort?: string;
 	};
 
-	const modelsResponse = await oneAiApiRequest.call(this, {
-		method: 'GET',
-		endpoint: '/api/chats/models',
-	});
-	const models = modelsResponse as unknown as Array<{ id: string; reasoning: boolean }>;
-	const modelInfo = Array.isArray(models) ? models.find((m) => m.id === model) : undefined;
-
-	const userMessages = input.filter((m) => m.role === 'user');
-	if (userMessages.length === 0) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'At least one user message is required.',
-		);
-	}
-	const content = userMessages.map((m) => m.content as string).join('\n\n');
-
 	const body: IDataObject = {
 		message: content,
 		model,
@@ -288,9 +364,12 @@ export async function execute(
 		body.timeZone = chatOptions.timeZone;
 	}
 
-	// ! only send reasoningEffort when the model supports reasoning
-	if (modelInfo?.reasoning) {
-		body.reasoningEffort = additionalOptions.reasoningEffort || 'medium';
+	// Sent as chosen, and left to oneAI to apply: it drops the effort for a model that does not
+	// reason and defaults to `medium` for one that does. Deciding that here needed a second
+	// request per item, and judged the model the author named - wrong for `auto` and for a chat
+	// whose agent pins its own model.
+	if (additionalOptions.reasoningEffort) {
+		body.reasoningEffort = additionalOptions.reasoningEffort;
 	}
 
 	const response = await oneAiApiRequest.call(this, {
