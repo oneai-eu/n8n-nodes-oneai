@@ -328,18 +328,15 @@ const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'] as co
 const MAX_IMAGES = 8;
 const MAX_IMAGE_BYTES = 10_000_000;
 const MAX_IMAGES_TOTAL_BYTES = 25_000_000;
-/**
- * The contract's `filename` `max(255)`, counted in UTF-16 units like `slice`. The name is a display
- * label n8n derives from a URL, header or attachment, so it is cut to fit rather than refused.
- */
-const MAX_FILENAME_LENGTH = 255;
 
-/** One entry of the request's `images` array. */
+/**
+ * One entry of the request's `images` array. The contract's optional `filename` is never sent:
+ * oneAI validates and then discards it, so n8n's untrusted `fileName` could only fail the request.
+ */
 type ChatImage = {
 	contentType: (typeof IMAGE_TYPES)[number];
 	/** Raw base64, no `data:` prefix. */
 	data: string;
-	filename?: string;
 };
 
 function isImageType(mimeType: string): mimeType is ChatImage['contentType'] {
@@ -403,11 +400,7 @@ async function readImages(this: IExecuteFunctions, index: number): Promise<ChatI
 			);
 		}
 		totalBytes += buffer.length;
-		images.push({
-			contentType: mimeType,
-			data: buffer.toString('base64'),
-			...(meta.fileName ? { filename: meta.fileName.slice(0, MAX_FILENAME_LENGTH) } : {}),
-		});
+		images.push({ contentType: mimeType, data: buffer.toString('base64') });
 	}
 	if (totalBytes > MAX_IMAGES_TOTAL_BYTES) {
 		throw new NodeOperationError(
