@@ -328,6 +328,11 @@ const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'] as co
 const MAX_IMAGES = 8;
 const MAX_IMAGE_BYTES = 10_000_000;
 const MAX_IMAGES_TOTAL_BYTES = 25_000_000;
+/**
+ * The contract's `filename` `max(255)`, counted in UTF-16 units like `slice`. The name is a display
+ * label n8n derives from a URL, header or attachment, so it is cut to fit rather than refused.
+ */
+const MAX_FILENAME_LENGTH = 255;
 
 /** One entry of the request's `images` array. */
 type ChatImage = {
@@ -383,6 +388,13 @@ async function readImages(this: IExecuteFunctions, index: number): Promise<ChatI
 			);
 		}
 		const buffer = await this.helpers.getBinaryDataBuffer(index, name);
+		if (buffer.length === 0) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Binary field "${name}" is empty (0 bytes); Create Response needs the image's content.`,
+				{ itemIndex: index },
+			);
+		}
 		if (buffer.length > MAX_IMAGE_BYTES) {
 			throw new NodeOperationError(
 				this.getNode(),
@@ -394,7 +406,7 @@ async function readImages(this: IExecuteFunctions, index: number): Promise<ChatI
 		images.push({
 			contentType: mimeType,
 			data: buffer.toString('base64'),
-			...(meta.fileName ? { filename: meta.fileName } : {}),
+			...(meta.fileName ? { filename: meta.fileName.slice(0, MAX_FILENAME_LENGTH) } : {}),
 		});
 	}
 	if (totalBytes > MAX_IMAGES_TOTAL_BYTES) {
