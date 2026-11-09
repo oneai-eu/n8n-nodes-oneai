@@ -355,6 +355,7 @@ same direction: too high, because they counted files.
 npm run lint          # n8n-node lint — n8n's own rule set
 npm run build         # n8n-node build
 npx tsc --noEmit      # strict, noImplicitAny
+npm test              # builds, then node:test against dist/: the transport's retry policy
 node scripts/drift-check.mjs        # spec ↔ shipped surface, on shapes
 node scripts/paired-item-check.mjs  # lineage: every row names the input item it came from
 node scripts/panel-check.mjs        # can a workflow author FIND the node in the panel?

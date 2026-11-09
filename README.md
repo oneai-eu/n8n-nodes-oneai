@@ -294,6 +294,7 @@ Operations that **read** one: `AI > Edit Image`, `AI > Transcribe Audio`, `Datas
 - **Multi-model AI access** — query multiple AI models through a single node, with the model list loaded live from your instance
 - **oneData datasets** — create typed tables and land rows from any other n8n node in them, one at a time with row IDs or in bulk
 - **Automatic pagination** — list operations transparently handle paginated API responses
+- **Rides out short outages**: a request oneAI never received (a refused or unresolvable connection, `503`, `429`) is sent again up to four times over about 15 seconds; see [Retries](#retries)
 - **Storage integration** — spaces backed by OneDrive/SharePoint, Google Drive, GitHub, SMB, and a range of business applications
 - **File management** — upload, download, rename, transfer and embed files across spaces, with an embedding-progress signal so a workflow knows when a file is ready to be asked about
 - **Compliance** — read the EU AI Act audit trail, export it as a ZIP for a spreadsheet or a warehouse, and record a `block` / `unblock` verdict on a request the compliance layer held
@@ -341,6 +342,17 @@ Honesty is more useful here than a coverage percentage. oneAI's API is far large
 - **No streaming.** `AI > Create Response` returns the completed answer, not a token stream.
 - **No tool/function-calling definitions** on `AI > Create Response`.
 - **No empty-project creation, and no project deletion.** oneAI has no endpoint for either any more, so the node offers what oneAI actually does instead: `Project > Instantiate Template` creates a project from a template, and `Project > Archive` retires one reversibly, per user. Neither is a drop-in replacement for the `Create` and `Delete` operations they succeed, and the differences are set out under [Project](#project-6-operations).
+
+## Retries
+
+A short interruption at oneAI's edge (a deploy, a restart) used to end a long-running execution at the next request. The node now sends a request again, up to **four times** with a backoff of roughly 1, 2, 4 and 8 seconds, when the failure means oneAI did nothing with it:
+
+- the connection was refused or the host could not be resolved (`ECONNREFUSED`, `ENOTFOUND`, `EAI_AGAIN`, `ENETUNREACH`, `EHOSTUNREACH`);
+- oneAI answered `503` or `429`. Where the host still passes the `Retry-After` header through (n8n older than 1.102.0), it is honoured up to 30 seconds.
+
+A failure **after** the request may have arrived (a reset or timed-out connection, `502`, `504`) is retried only for reads and for operations that are safe to repeat: `Space > Upload File` with **Replace** on, and the embedding request **Auto Embed** sends. Everything else surfaces at once, because sending it twice could create a second chat, a second row or a second file. Every answer that would be the same next time (`400`, `401`, `403`, `404`, `500`, …) surfaces at once, too.
+
+Retries happen per request, inside the node, and log a warning in n8n's log. They are independent of n8n's own **Retry On Fail** setting, which still runs the whole node again for every item if you switch it on. A cancelled execution stops retrying.
 
 ## Compatibility
 

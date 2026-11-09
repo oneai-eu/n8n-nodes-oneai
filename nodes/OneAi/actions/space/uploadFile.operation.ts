@@ -92,6 +92,10 @@ export async function execute(
 			path,
 			replace,
 		},
+		// With `replace`, a second upload of the same bytes leaves the space as one did. Without
+		// it, an attempt after one that landed answers "A file already exists", so only a
+		// failure that provably reached nobody is retried.
+		idempotent: replace,
 	});
 
 	const result: IDataObject = {
@@ -108,6 +112,8 @@ export async function execute(
 			body: {
 				paths: [path],
 			},
+			// Queuing a file that is already queued only reports it as skipped.
+			idempotent: true,
 		});
 		result.embed = embedResponse;
 	}
