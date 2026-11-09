@@ -5,13 +5,19 @@ import type {
 	IHttpRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, sleep } from 'n8n-workflow';
+import { isIdempotent, retryDelayMs } from './retry';
 
 export interface OneAiApiRequestOptions {
 	method: IHttpRequestMethods;
 	endpoint: string;
 	body?: IDataObject;
 	qs?: IDataObject;
+	/**
+	 * Whether sending this request twice has the same effect as sending it once. Defaults to
+	 * true for GET and HEAD and false for everything else; see `retry.ts` for what it decides.
+	 */
+	idempotent?: boolean;
 }
 
 /**
@@ -63,6 +69,40 @@ function withoutCredential(error: unknown): JsonObject {
 	return error as JsonObject;
 }
 
+/**
+ * Send one request to oneAI, retrying the failures `retry.ts` calls transient, and surface
+ * anything else as a `NodeApiError` with the credential scrubbed.
+ *
+ * Each attempt gets its own copy of the options because the credential helper adds the
+ * `Authorization` header to the object it is given. The wait between attempts uses
+ * `n8n-workflow`'s `sleep` (community nodes may not touch `setTimeout`), and a cancelled
+ * execution stops retrying rather than waiting out the backoff.
+ */
+async function send(
+	this: IExecuteFunctions,
+	requestOptions: IHttpRequestOptions,
+	idempotent: boolean | undefined,
+): Promise<unknown> {
+	const retryable = isIdempotent(requestOptions.method ?? 'GET', idempotent);
+	for (let retry = 1; ; retry++) {
+		try {
+			return await this.helpers.httpRequestWithAuthentication.call(this, 'oneAiApi', {
+				...requestOptions,
+				headers: { ...requestOptions.headers },
+			});
+		} catch (error) {
+			const delay = retryDelayMs({ error, retry, idempotent: retryable });
+			if (delay === undefined || this.getExecutionCancelSignal?.()?.aborted === true) {
+				throw new NodeApiError(this.getNode(), withoutCredential(error));
+			}
+			this.logger.warn(
+				`oneAI request ${requestOptions.method ?? 'GET'} ${requestOptions.url} failed transiently; retry ${retry} in ${delay} ms`,
+			);
+			await sleep(delay);
+		}
+	}
+}
+
 export async function oneAiApiRequest(
 	this: IExecuteFunctions,
 	options: OneAiApiRequestOptions,
@@ -88,16 +128,7 @@ export async function oneAiApiRequest(
 		requestOptions.qs = options.qs;
 	}
 
-	try {
-		const response = await this.helpers.httpRequestWithAuthentication.call(
-			this,
-			'oneAiApi',
-			requestOptions,
-		);
-		return response as JsonObject;
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), withoutCredential(error));
-	}
+	return (await send.call(this, requestOptions, options.idempotent)) as JsonObject;
 }
 
 /**
@@ -132,16 +163,8 @@ export async function oneAiApiRequestRaw(
 		requestOptions.qs = options.qs;
 	}
 
-	try {
-		const response = await this.helpers.httpRequestWithAuthentication.call(
-			this,
-			'oneAiApi',
-			requestOptions,
-		);
-		return Buffer.from(response as ArrayBuffer);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), withoutCredential(error));
-	}
+	const response = await send.call(this, requestOptions, options.idempotent);
+	return Buffer.from(response as ArrayBuffer);
 }
 
 export interface OneAiApiBinaryRequestOptions {
@@ -155,6 +178,8 @@ export interface OneAiApiBinaryRequestOptions {
 	 * declares `text/csv` and nothing else, so it has to be able to say so.
 	 */
 	contentType?: string;
+	/** As on `OneAiApiRequestOptions`. */
+	idempotent?: boolean;
 }
 
 export async function oneAiApiRequestBinary(
@@ -178,16 +203,7 @@ export async function oneAiApiRequestBinary(
 		requestOptions.qs = options.qs;
 	}
 
-	try {
-		const response = await this.helpers.httpRequestWithAuthentication.call(
-			this,
-			'oneAiApi',
-			requestOptions,
-		);
-		return response as JsonObject;
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), withoutCredential(error));
-	}
+	return (await send.call(this, requestOptions, options.idempotent)) as JsonObject;
 }
 
 export async function oneAiApiRequestAllItems(
