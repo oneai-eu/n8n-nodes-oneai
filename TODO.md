@@ -10,6 +10,36 @@
 > This file is **data, not rules.** The rules live in `CLAUDE.md` and `.claude/agents/AGENTS.md`,
 > which are the owner's. Nothing here overrides them.
 
+**Frontier (2026-10-27): images on `AI > Create Response`, draft PR #21, waiting for oneAI.**
+npm `latest` is **0.3.3** (`npm view`, 2026-10-27); `package.json` says `0.3.3` and this run did not
+change it. Branch `feat/create-response-images` adds **Add Images** + **Image Data Field Name(s)**:
+the input item's binary fields go to oneAI as `images` (`contentType` + base64 `data`) with the
+chat message, are stored with the user message and show in the oneAI chat. Additive only: no
+rename, no `typeVersion` change, and with Add Images off the request body is byte-identical to
+`0.3.3`. Session 0007.
+
+🔴 **The PR must not merge until all three of these are done, in this order:**
+
+1. **oneAI PR #3488** (`forgejo.onedeploy.dev/oneai/oneai/pulls/3488`) is on oneAI `main`. The
+   feature needs the oneAI release that follows it; no version number is named anywhere, by owner
+   ruling. An older oneAI answers ``Error at `images`: Unrecognized.``
+2. **Refresh `openapi/openapi.json` + `openapi/PROVENANCE.md` from oneAI `origin/main`** (every row,
+   SHA-256 included, and the "what changed" section), then run `drift-check.mjs` over the whole
+   surface. Today it reports exactly **1 FAIL, expected**: `images` is not in the committed snapshot.
+   🔴 Then **hand-check the nested item shape** of `images[]` against the refreshed spec - keys
+   `contentType` and `data` only, `filename` deliberately never sent. No checker sees this (BL-23,
+   BL-30). Take the shape from what lands on `main`: the contract already moved once during the run
+   (oneAI `ebf3bc095` -> `c131fa696` dropped the filename).
+3. **Live run on the bench** (`n8n.oneai.de` against devtest, once devtest runs the oneAI change):
+   one PNG answered without tool calls and well under 300 s; two fields; a non-vision model's 400
+   passing through; the client refusals; ~20 MB total from n8n 2.37.9 (U-3: whether an older host's
+   `maxBodyLength` refuses large bodies is unmeasured); `Chat > Get` on the returned `chatId` showing
+   the images on the user message (U-2, so far read from oneAI source only); Add Images off
+   unchanged. **NOT-REACHED** so far.
+
+**Deployed by this run: nothing.** The bench was not touched or inspected; the record below is what
+the last run that deployed left there, and `0.3.3`'s state on it is unverified.
+
 **Frontier (2026-09-05): `0.3.0` is published.** npm `latest` is **0.3.0**, verified against the
 registry rather than the CI log — shasum `87b184c4…` matches, 302 files, a SLSA provenance
 attestation is attached, and the package still declares **zero runtime dependencies**. 🔴 **And the
@@ -58,6 +88,29 @@ followed by `docker restart oneai-devtest-n8n` on the host. The `rm -rf` is not 
   it at `*`. 🔴 The scrub is proven *not* load-bearing on the bench's n8n 2.37.9 — with it removed
   the persisted record was byte-identical and still clean — and **NOT-REACHED** on an older host,
   because none was available. It stays because `*` means we do not get to assume the newer host.
+
+  🔴 *Note added 2026-10-27 (Session 0007): "the run mitigated it at our own seam" is false.* The
+  older host has now been reached, by probe: n8n-core's `httpRequestWithAuthentication` wraps the
+  axios error in a `NodeApiError` **before** our `catch` runs, so `withoutCredential` receives an
+  error with no `config` and removes nothing. On `n8n-workflow` 1.98.0 the `oai_` key **is** in the
+  persisted JSON. The leak is therefore unmitigated on exactly the hosts `*` admits, which makes
+  this ruling more pressing, not less. Filed as **BF-8** (the scrub) and **BF-9** (the body); the
+  README's Compatibility section was corrected in the same session.
+- **OWNER-11 · Axis 2 of the security doctrine describes a mechanism upstream has replaced.**
+  `node-security.md` axis 2, `AGENTS.md` ("the `Authorization` header is unreachable … the reason is
+  a single field declaration in `n8n-workflow`") and the comment in `transport/index.ts` all say the
+  persisted record is safe because of a `cause` class field. On the bench's n8n 2.37.9
+  (`n8n-workflow` 2.37.3) that is no longer the mechanism: upstream n8n #35216 ("Preserve `cause` on
+  execution errors", 2026-07-30) keeps the axios error as a **non-enumerable own `cause`**, and
+  `toJSON()` writes only a bounded `{ name, message }` projection of it. Measured in Session 0007:
+  the persisted record is still clean (368 B, no key, no body), and now **deliberately** so - but
+  the image body and the `Authorization` header are both reachable in memory through `error.cause`
+  (`cause.response.config.data`, `cause.response.request._header`), so anything that serializes the
+  error other than through `toJSON()` (an error reporter, a logger walking `cause`) would see them.
+  That last part is inferred; no such consumer was traced. Also: the local devDependency
+  (`n8n-workflow` 2.30.2) still has the old class field, so a local probe proves nothing about the
+  bench. The agent files are the owner's, so this is recorded rather than rewritten; the transport
+  comment belongs with BF-8's fix. Source: security report S-3.
 - **OWNER-7 · A `oneAI Chat Model` sub-node.** An LLM sub-node that n8n's AI Agent could use with the
   oneAI Gateway, rather than an action node an agent calls as a tool. Named as a separate spike when
   the v0.3.0 scope was ruled, and deliberately not part of that run. *(no work done)*
@@ -87,6 +140,35 @@ followed by `docker restart oneai-devtest-n8n` on the host. The `rm -rf` is not 
 
 ## ▶ Open work
 
+### Failed requests on older hosts - found by the Session 0007 security audit
+
+Both are older than the images change and need their own PR; neither blocks PR #21. Measured with a
+probe (real axios 1.18.0, a ~4 MB body, a local server answering a yedra-shaped 400) through the real
+wrapping order, against `n8n-workflow` 2.37.3 (bench), 2.30.2 (local devDependency) and 1.98.0.
+
+- 🔴 **BF-8 · `withoutCredential` does nothing on the path the node actually uses - HIGH on
+  `n8n-workflow` ≤ 1.98.0 (n8n ≤ 1.101.0).** n8n-core's `httpRequestWithAuthentication` catches the
+  axios error and throws `new NodeApiError(this.getNode(), error)` itself - read from source at
+  `n8n@1.50.0` (`NodeExecuteFunctions.ts`), `n8n@1.100.0` (`request-helper-functions.ts`) and
+  `n8n@2.37.9` (`request-helpers/authentication.ts`). Our `catch` therefore receives a
+  `NodeApiError`, which has no `config`, so the scrub removes nothing, and our own
+  `new NodeApiError(node, …)` hands back that same instance. On 1.98.0 the `oai_` key **is** in the
+  persisted JSON. The 2026-09-03 audit missed it because it walked a hand-built axios error straight
+  into our transport, a path n8n never takes. 🔴 The comment in `transport/index.ts` ("scrubbing here
+  makes the outcome independent of the host version") is false and should be corrected in the same
+  fix. Options, the owner's to choose (OWNER-10): a scrub that also walks `error.cause`
+  (`cause.config`, `cause.response.config`, `cause.response.request`) and drops `config.data`; or a
+  peer / `engines` floor that excludes the affected hosts. *(P1)*
+- **BF-9 · On those same hosts a failed request persists the whole request body - MEDIUM, made
+  much larger by Add Images.** axios's `AxiosError.toJSON()` writes `config.data`, and an old
+  `n8n-workflow` serializes the enumerable `cause`: a 4 MB body became 4 001 952 bytes of error
+  JSON. At the image limits that is ~33.3 MB of base64 per failed `ai:createResponse` item in
+  `execution_data`; `ai:editImage` already did the same with `image_b64` and no size cap at all.
+  Mainly size rather than secrecy - the images are the workflow's own input - but it bloats the
+  database and the execution view. Not reproduced on 2.37.3 (368 B, no body). Inferred, not proven:
+  that n8n's run-data serializer honours `toJSON`. Same fix site as BF-8 (drop `config.data`).
+  *(P2)*
+
 ### Checker gaps, every one proven by mutation
 
 Each of these was demonstrated by breaking the code and watching the gates stay green — 19 mutations
@@ -106,7 +188,9 @@ the defect.
   rejects it. 🔴 The only thing standing between that and a shipped 400 is the local
   `Record<AuditLogExportField, boolean>` annotation over a closed union, which makes it a compile
   error. **That annotation is load-bearing and must not be relaxed to `Record<string, boolean>`** —
-  weakened, all five gates go green on a broken request. *(P2)*
+  weakened, all five gates go green on a broken request. *(P2)* *Note 2026-10-27:* a second body
+  now has the same blind spot inside an **array** - `images[]` on `ai:createResponse`, where no type
+  annotation closes the gap. See BL-30.
 - **BL-24 · Two classes produce no red anywhere.** Breaking `auditLog:export`'s output constants
   (`audit-logs.zip` → `audit-logs`, `application/zip` → `application/octet-stream`) and reinstating a
   dead enum value in `auditLog:list`'s `origin` both leave `tsc`, lint, drift, lineage and panel at
@@ -116,7 +200,28 @@ the defect.
   mutation the house rule demands is caught there now, but the same shadowing defect in a helper one
   directory up — `nodes/OneAi/lineage.ts`, `nodes/OneAi/transport/` — leaves all five gates green.
   Nothing does this today, so it is latent. Widening the glob to `nodes/OneAi/**` is a one-line
-  change to the checker's own scope. *(P3)*
+  change to the checker's own scope. *(P3)* *Re-measured 2026-10-27 (Session 0007, validator
+  mutation M13):* still open. Output routed through a new `nodes/OneAi/lineage.ts` with the
+  shadowing `map((row, index) =>`, while a correct `pairedItem: { item: index }` site stayed in the
+  operation file, reported `clean`; only an execution harness saw item 1's rows name the wrong item.
+- **BL-29 · Reading the wrong item's binary passes every gate.** The `pairedItem` class, on the
+  *input* side: no checker relates the item index passed to `assertBinaryData` /
+  `getBinaryDataBuffer` to the item being processed. Validator mutation M1 (Session 0007) made
+  `ai:createResponse` read item 0's binary for every item; `tsc`, lint, drift, lineage and panel all
+  stayed green, and only a stubbed-`execute` harness went red. 🔴 It applies to **every operation
+  that reads binary** - `ai:createResponse`, `ai:editImage`, `ai:transcribeAudio`,
+  `dataset:importCsv`, `space:uploadFile` - and for a vision call the symptom is a plausible answer
+  about the wrong image, which nobody downstream can detect. Natural home: a rule in
+  `paired-item-check.mjs` that the index argument of those helpers resolves to the router's item
+  index, by binding, not by name (the house rule from the `pairedItem` defect). *(P2)*
+- **BL-30 · A renamed key inside a nested request object compiles and drifts green.** Validator
+  mutations M10 and M12 (Session 0007): renaming `contentType` to `mimeType` in both the `ChatImage`
+  type and the push, or writing `fileName` instead of `filename` inside a conditional spread
+  (spreads escape TypeScript's excess-property check), left `tsc`, drift and lineage green; oneAI
+  would answer 400, because yedra closes nested objects too. Same root as BL-23, one level deeper:
+  the drift check compares `images` as one `array` key. Until a nested tier exists, the hand-check
+  of `images[]`'s item shape after every snapshot refresh is **load-bearing** (frontier, step 2).
+  *(P2)*
 - **BL-20 · `panel-check.mjs` reads `modes.ts`, and hard-codes `OneAi.node.ts`.** Two consequences.
   It does **not** move when a router arm is removed — commenting out a `case` dropped the drift check
   to 74 while panel-check still reported 75 — so it is not a second opinion on the shipped surface,
@@ -151,6 +256,16 @@ the defect.
   and a real chance of breaking build or lint. **Revisit when `@n8n/node-cli` or `n8n-workflow`
   update**, not before. *(P3)*
 
+- **BL-31 · Binary operations load the whole file before checking its size.** `ai:createResponse`
+  checks the image type from metadata before loading (good), but its 10 MB and 25 MB limits only
+  after `getBinaryDataBuffer` has read the bytes, and the 25 MB total only after the loop: a
+  mislabelled multi-GB `image/png` in filesystem or S3 binary mode is read completely before it is
+  refused, and eight 9.9 MB images hold ~80 MB of buffers plus ~106 MB of base64 before the
+  refusal. Peak for one accepted item is ~25 MB buffers + ~33 MB base64 + ~33 MB JSON + axios's
+  copy. Not a regression: `ai:editImage`, `space:uploadFile` and `ai:transcribeAudio` load with no
+  check at all. Hardening: refuse early from `IBinaryData.bytes` when it is present, and keep the
+  running total inside the loop. Failed items do not pile up - with `continueOnFail` the router keeps
+  only `error.message`. Source: security report S-5. *(P3)*
 - **BL-22 · Agent Builder (`api/agent-definitions`) stays out.** Owner ruling: not finished in oneAI
   yet. Also `POST …/runs` takes a body of `{}` with `additionalProperties: false`, so a run cannot be
   parameterised, and shipping even `agent:list` would freeze the resource name `agent` against a
@@ -368,7 +483,8 @@ the defect.
   Session 0004.
 - ✅ **The credential could reach the persisted execution record on older hosts.** Stripped at our own
   seam now, for all four transport helpers. What that does **not** close is the peer-floor question —
-  **OWNER-10**. Session 0004.
+  **OWNER-10**. Session 0004. 🔴 *Note 2026-10-27:* the scrub never reaches the error n8n persists,
+  because n8n-core wraps it first - **reopened as BF-8**, Session 0007.
 
 - ✅ **The README documented 57 operations, omitted five that ship, and denied two of them in
   prose** — the release blocker. Regenerated from `modes.ts` and verified mechanically.
